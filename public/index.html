@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Etsy Research Hub</title>
+  <meta name="description" content="Etsy keyword research, competitor, listing and shop analysis tool." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23f1641e'/><text x='16' y='23' font-size='20' font-family='Georgia' font-weight='bold' fill='white' text-anchor='middle'>E</text></svg>" />
+  <script>
+    try { var t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="#/">
+        <div class="brand-mark">E</div>
+        <div>
+          <div class="brand-name">Etsy Research Hub</div>
+          <div class="brand-sub">Keywords · Listings · Shops</div>
+        </div>
+      </a>
+      <nav class="nav" id="nav"></nav>
+      <div class="sidebar-foot">
+        <a class="status-pill" href="#/setup" id="api-status"><span class="dot"></span><span>Checking API…</span></a>
+        <button class="btn ghost sm theme-btn" id="theme-toggle" type="button">Toggle theme</button>
+      </div>
+    </aside>
+    <div class="scrim" id="scrim"></div>
+    <div class="main">
+      <header class="topbar">
+        <button class="btn ghost sm" id="menu-btn" type="button" aria-label="Open menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <strong>Etsy Research Hub</strong>
+      </header>
+      <main class="view" id="view"></main>
+    </div>
+  </div>
+  <div id="tooltip" role="tooltip"></div>
+  <div id="toasts"></div>
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>

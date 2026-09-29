@@ -44,7 +44,24 @@ export async function api(path, params) {
     for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== null && v !== '') p.set(k, v);
     url += '?' + p.toString();
   }
-  const res = await fetch(url, { headers: { accept: 'application/json' } });
+  return request(url, { headers: { accept: 'application/json' } });
+}
+
+// POST/PUT/PATCH/DELETE with a JSON body.
+export function send(method, path, data) {
+  return request(path, {
+    method,
+    headers: { accept: 'application/json', 'content-type': 'application/json' },
+    body: JSON.stringify(data || {}),
+  });
+}
+
+async function request(url, opts) {
+  const res = await fetch(url, opts);
+  if (res.status === 401 && !url.startsWith('/api/auth/')) {
+    location.href = '/login';
+    return new Promise(() => {}); // page is navigating away
+  }
   let body = {};
   try {
     body = await res.json();

@@ -392,3 +392,20 @@ tr.expand td { background: var(--surface-2); }
 .section-title { display: flex; align-items: center; gap: 8px; margin: 26px 0 12px; }
 .section-title h2 { font-size: 16px; }
 .divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+/* ---------- login / sign up ---------- */
+.auth-page { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; }
+.auth-card { width: 100%; max-width: 400px; }
+.auth-card .brand { justify-content: center; padding-bottom: 20px; }
+.auth-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--surface-3); border-radius: 11px; margin-bottom: 18px; }
+.auth-tabs button { border: 0; background: transparent; padding: 8px; border-radius: 8px; font-weight: 600; color: var(--text-2); cursor: pointer; }
+.auth-tabs button.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+.auth-form { display: grid; gap: 14px; }
+.auth-form .btn { width: 100%; }
+.auth-msg:empty { display: none; }
+
+/* ---------- account box in sidebar ---------- */
+.user-box { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
+.user-box .avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-ink); display: grid; place-items: center; font-weight: 700; flex: 0 0 30px; text-transform: uppercase; }
+.user-box .who { min-width: 0; flex: 1; line-height: 1.2; }
+.user-box .who b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }

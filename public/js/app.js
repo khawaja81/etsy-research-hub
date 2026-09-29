@@ -1,4 +1,4 @@
-import { $, $$, api, esc, initTooltip, copyText, fmtInt } from './ui.js';
+import { $, $$, api, send, esc, initTooltip, copyText, fmtInt } from './ui.js';
 import { icons } from './icons.js';
 import * as home from './pages/home.js';
 import * as keyword from './pages/keyword.js';
@@ -11,6 +11,12 @@ import * as fees from './pages/fees.js';
 import * as calendar from './pages/calendar.js';
 import * as saved from './pages/saved.js';
 import * as setup from './pages/setup.js';
+import * as account from './pages/account.js';
+import * as users from './pages/users.js';
+
+// Who is logged in (the server redirects to /login when nobody is).
+const { user } = await api('/api/auth/me');
+const isAdmin = user.role === 'admin';
 
 const NAV = [
   { group: null, items: [{ path: '/', label: 'Dashboard', icon: 'home', page: home }] },
@@ -41,7 +47,18 @@ const NAV = [
     items: [
       { path: '/calendar', label: 'Seasonal Calendar', icon: 'calendar', page: calendar },
       { path: '/saved', label: 'Saved Keywords', icon: 'star', page: saved },
-      { path: '/setup', label: 'API Setup', icon: 'settings', page: setup },
+    ],
+  },
+  {
+    group: 'Account',
+    items: [
+      { path: '/account', label: 'My Account', icon: 'user', page: account },
+      ...(isAdmin
+        ? [
+            { path: '/users', label: 'Users', icon: 'users', page: users },
+            { path: '/setup', label: 'API Setup', icon: 'settings', page: setup },
+          ]
+        : []),
     ],
   },
 ];
@@ -77,7 +94,7 @@ async function render() {
   closeMenu();
   const id = ++renderId;
   const view = $('#view');
-  const ctx = { alive: () => id === renderId, go, params, path: route.path, refreshStatus };
+  const ctx = { alive: () => id === renderId, go, params, path: route.path, refreshStatus, user };
   view.innerHTML = '';
   window.scrollTo(0, 0);
   try {
@@ -116,8 +133,31 @@ $('#theme-toggle').addEventListener('click', () => {
     /* ignore */
   }
   paintThemeBtn();
+
+if (!isAdmin) $('#api-status').removeAttribute('href');
+$('#user-box').innerHTML = `<div class="avatar">${esc(user.username[0])}</div>
+  <div class="who"><b>${esc(user.username)}</b><span class="muted small">${isAdmin ? 'Admin' : 'User'}</span></div>
+  <button class="btn ghost xs" id="logout" type="button">Log out</button>`;
+$('#logout').addEventListener('click', async () => {
+  try {
+    await send('POST', '/api/auth/logout');
+  } finally {
+    location.href = '/login';
+  }
+});
 });
 paintThemeBtn();
+
+$('#user-box').innerHTML = `<div class="avatar">${esc(user.username[0])}</div>
+  <div class="who"><b>${esc(user.username)}</b><span class="muted small">${isAdmin ? 'Admin' : 'User'}</span></div>
+  <button class="btn ghost xs" id="logout" type="button">Log out</button>`;
+$('#logout').addEventListener('click', async () => {
+  try {
+    await send('POST', '/api/auth/logout');
+  } finally {
+    location.href = '/login';
+  }
+});
 
 export async function refreshStatus() {
   const el = $('#api-status');

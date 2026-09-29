@@ -44,8 +44,10 @@ Then open http://localhost:3000.
 3. In the service, open **Variables** and add:
    - `ETSY_API_KEY` = your keystring
    - `ETSY_SHARED_SECRET` = your shared secret
-   - `APP_PASSWORD` = *(optional)* locks the site behind a password prompt
-4. Open **Settings → Networking → Generate Domain** to get a public URL.
+   - `ADMIN_USERNAME` / `ADMIN_PASSWORD` = your admin login
+   - `SESSION_SECRET` = any long random text (keeps people logged in across redeploys)
+4. Accounts are saved in a file, and Railway's disk is wiped on every deploy. Add a **Volume** to the service (mount path e.g. `/data`) and set `DATA_DIR=/data` so users are not lost.
+5. Open **Settings → Networking → Generate Domain** to get a public URL.
 
 **Option B: Railway CLI**
 ```bash
@@ -65,9 +67,21 @@ Railway detects Node automatically. `railway.json` sets the start command and a 
 |---|---|---|---|
 | `ETSY_API_KEY` | yes | — | Etsy app keystring. `keystring:secret` in one value also works |
 | `ETSY_SHARED_SECRET` | yes | — | Etsy app shared secret. Etsy requires the `keystring:shared_secret` format, which the app builds for you |
-| `APP_PASSWORD` | no | — | Password-protects the whole site (HTTP Basic Auth, any username) |
+| `ADMIN_USERNAME` | no | `admin` | Admin login name |
+| `ADMIN_PASSWORD` | yes | random | Admin password. If unset, a temporary one is printed in the server log on each start |
+| `SESSION_SECRET` | yes | random | Signs login cookies. If unset, everyone is logged out whenever the server restarts |
+| `DATA_DIR` | no | `./data` | Where `users.json` (accounts, scrypt-hashed passwords) is stored. Point it at a Railway volume |
 | `ETSY_QPS` | no | `4` | Max Etsy requests per second |
 | `CACHE_TTL_MINUTES` | no | `60` | Etsy responses are cached in memory to save your daily quota |
+
+## Accounts
+
+Every page needs a login. Visitors see the **Log in / Sign up** screen at `/login`.
+- The **admin** logs in with `ADMIN_USERNAME` / `ADMIN_PASSWORD` and gets two extra pages: **Users** and **API Setup**.
+- On **Users** the admin can approve, disable, delete or reset the password of any account, add users, and choose who may sign up: *Open* (default), *Approval* (new accounts wait for the admin) or *Closed*.
+- Everyone, including the admin, can change their own password under **My Account**. The admin's new password is saved in `users.json` and keeps working after restarts.
+- **Forgot the admin password?** Change `ADMIN_PASSWORD` in Railway Variables (or `.env`) and restart. The new value becomes the admin password.
+- Passwords are hashed with scrypt, sessions are signed HttpOnly cookies (30 days), and repeated wrong passwords lock that login for 15 minutes.
 
 ## API usage
 
@@ -86,6 +100,7 @@ server.js            Express server + REST API (/api/*)
 src/etsy.js          Etsy API client (auth, rate limit, retries, cache, usage tracking)
 src/analyze.js       Statistics: prices, tags, n-grams, shops, scores, reviews
 src/suggest.js       Keyword ideas (Google / "etsy …" / Amazon autocomplete)
+src/auth.js          Login, sign up, sessions and admin user management
 src/fx.js            Currency conversion to USD (open.er-api.com, cached 12h)
 public/              Front-end (vanilla JS single-page app, no build step)
 ```
@@ -96,6 +111,7 @@ public/              Front-end (vanilla JS single-page app, no build step)
 
 1. Etsy developer account se **Keystring** aur **Shared secret** lein (upar step 1).
 2. Code GitHub pe push karein, phir Railway pe "Deploy from GitHub repo" karein.
-3. Railway → Variables mein `ETSY_API_KEY` aur `ETSY_SHARED_SECRET` daalein. Agar site ko private rakhna hai to `APP_PASSWORD` bhi daalein.
+3. Railway → Variables mein `ETSY_API_KEY` aur `ETSY_SHARED_SECRET` daalein. Login ke liye `ADMIN_USERNAME`, `ADMIN_PASSWORD` aur `SESSION_SECRET` bhi daalein. Users save rakhne ke liye Railway pe Volume lagayen (`/data`) aur `DATA_DIR=/data` set karein.
 4. Settings → Networking → Generate Domain. Aapki website live ho jayegi.
-5. Website khol kar **API Setup → Test connection** dabayen. "Connected" aaye to sab tools use karein.
+5. Admin se login karein. Doosre log **Sign up** se account bana sakte hain; admin **Users** page se unhein approve / disable / delete kar sakta hai.
+6. Website khol kar **API Setup → Test connection** dabayen. "Connected" aaye to sab tools use karein.

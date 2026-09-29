@@ -22,7 +22,10 @@ ETSY_SHARED_SECRET=your_shared_secret</div>
         <div class="divider"></div>
         <h3>Optional settings</h3>
         <dl class="kv">
-          <dt><code>APP_PASSWORD</code></dt><dd>Protects the whole site with a password (browser login prompt, any username).</dd>
+          <dt><code>ADMIN_USERNAME</code></dt><dd>Admin login name (default <code>admin</code>).</dd>
+          <dt><code>ADMIN_PASSWORD</code></dt><dd>Starting admin password. The admin can change it under My Account; changing this variable later resets it.</dd>
+          <dt><code>SESSION_SECRET</code></dt><dd>Long random text used to sign login cookies. Without it everyone is logged out on each restart.</dd>
+          <dt><code>DATA_DIR</code></dt><dd>Folder where user accounts are saved (default <code>./data</code>). On Railway, attach a volume and point this at it.</dd>
           <dt><code>ETSY_QPS</code></dt><dd>Max Etsy requests per second (default 4).</dd>
           <dt><code>CACHE_TTL_MINUTES</code></dt><dd>How long Etsy results are cached (default 60). Caching saves your daily API quota.</dd>
         </dl>
@@ -54,7 +57,6 @@ ETSY_SHARED_SECRET=your_shared_secret</div>
       <dt>Daily limit</dt><dd>${u.limitPerDay != null ? `${fmtInt(u.remainingToday)} left of ${fmtInt(u.limitPerDay)}` : '<span class="muted">shown after first call</span>'}</dd>
       <dt>Request speed</dt><dd>${u.qps} per second</dd>
       <dt>Cached results</dt><dd>${fmtInt(u.cacheEntries)}</dd>
-      <dt>Password</dt><dd>${s.password ? 'On' : 'Off'}</dd>
       ${u.lastError ? `<dt>Last error</dt><dd class="bad-text">${esc(u.lastError)}</dd>` : ''}
     </dl>`;
   }

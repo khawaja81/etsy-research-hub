@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Log in · Etsy Research Hub</title>
+  <meta name="robots" content="noindex" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23f1641e'/><text x='16' y='23' font-size='20' font-family='Georgia' font-weight='bold' fill='white' text-anchor='middle'>E</text></svg>" />
+  <script>
+    try { var t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <main class="auth-page">
+    <div class="card auth-card">
+      <div class="brand">
+        <div class="brand-mark">E</div>
+        <div>
+          <div class="brand-name">Etsy Research Hub</div>
+          <div class="brand-sub">Keywords · Listings · Shops</div>
+        </div>
+      </div>
+      <div class="auth-tabs" id="tabs">
+        <button type="button" data-mode="login" class="active">Log in</button>
+        <button type="button" data-mode="signup">Sign up</button>
+      </div>
+      <form class="auth-form" id="form" novalidate>
+        <label class="field">Username
+          <input class="input" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required maxlength="32" />
+        </label>
+        <label class="field">Password
+          <input class="input" name="password" type="password" autocomplete="current-password" required maxlength="200" />
+        </label>
+        <label class="field hidden" id="confirm-wrap">Confirm password
+          <input class="input" name="confirm" type="password" autocomplete="new-password" maxlength="200" />
+        </label>
+        <p class="small muted hidden" id="rules">3–32 characters (letters, numbers, . - _) · password at least 8 characters.</p>
+        <div class="auth-msg" id="msg"></div>
+        <button class="btn" type="submit" id="submit">Log in</button>
+      </form>
+    </div>
+  </main>
+  <script type="module" src="/js/login.js"></script>
+</body>
+</html>

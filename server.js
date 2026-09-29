@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as etsy from './src/etsy.js';
 import { EtsyError } from './src/etsy.js';
+import { mountAuthRoutes, requireLogin, requireAdmin } from './src/auth.js';
 import { getUsdRates } from './src/fx.js';
 import { suggest, MODIFIERS } from './src/suggest.js';
 import {
@@ -20,7 +21,6 @@ import {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
-const APP_PASSWORD = process.env.APP_PASSWORD || '';
 
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
@@ -29,20 +29,9 @@ app.use(express.json({ limit: '200kb' }));
 
 app.get('/healthz', (_req, res) => res.json({ ok: true }));
 
-// Optional password protection (HTTP Basic Auth, any username).
-if (APP_PASSWORD) {
-  app.use((req, res, next) => {
-    const hdr = req.headers.authorization || '';
-    const [scheme, encoded] = hdr.split(' ');
-    if (scheme === 'Basic' && encoded) {
-      const decoded = Buffer.from(encoded, 'base64').toString();
-      const pass = decoded.slice(decoded.indexOf(':') + 1);
-      if (pass === APP_PASSWORD) return next();
-    }
-    res.set('WWW-Authenticate', 'Basic realm="Etsy Research Hub"');
-    res.status(401).send('Password required');
-  });
-}
+// Accounts: login / sign up / admin API, then everything else needs a logged-in user.
+mountAuthRoutes(app);
+app.use(requireLogin);
 
 app.use(
   express.static(path.join(__dirname, 'public'), {
@@ -139,12 +128,13 @@ function parseShopName(input) {
 app.get(
   '/api/status',
   wrap(async (_req, res) => {
-    res.json({ configured: etsy.isConfigured(), usage: etsy.getUsage(), password: Boolean(APP_PASSWORD) });
+    res.json({ configured: etsy.isConfigured(), usage: etsy.getUsage() });
   })
 );
 
 app.get(
   '/api/test-connection',
+  requireAdmin,
   wrap(async (_req, res) => {
     await etsy.ping();
     res.json({ ok: true, usage: etsy.getUsage() });

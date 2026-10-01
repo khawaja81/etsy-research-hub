@@ -6,6 +6,8 @@ An Etsy research website: keyword research, keyword ideas, competitor listing & 
 
 | Tool | What it does | Needs Etsy key |
 |---|---|---|
+| **Listing Builder** | Reads **live Etsy search data** for your keyword (competition, demand, price sweet spot, most-used tags & title phrases, fastest-growing listings) and writes a unique listing — 3 titles, 13 tags, description, materials, photo alt text — with the built-in writer or the optional AI writer. Every listing is policy-checked (score, auto-fix) and compared with your saved listings for uniqueness. **Bulk mode** writes many products in one run (≈2 Etsy calls each) with CSV export | For live data (works without, from your details only) |
+| **Policy Checker** | Paste any listing: title/tag limits, trademarks, medical claims, off-Etsy contact info, "vintage"/"handmade" claims, AI disclosure — with auto-fix | No |
 | **Keyword Research** | Total active listings (competition), opportunity / demand / competition scores, price distribution and "sweet spot", top competitor tags, title words and 2–3-word phrases, listing age, top shops, categories, materials, a full listings table with CSV export. Filters: price, category, shop location, sort, 100–300 listings | Yes |
 | **Keyword Ideas** | Long-tail ideas from Google autocomplete, "etsy …" searches, and Amazon autocomplete. Modes: basic, Etsy buyer modifiers, A–Z, and intent words. One-click Etsy competition check per keyword | Only for the competition check |
 | **Compare Keywords** | Up to 5 keywords side by side, with the best value in each row highlighted | Yes |
@@ -72,7 +74,19 @@ Railway detects Node automatically. `railway.json` sets the start command and a 
 | `SESSION_SECRET` | yes | random | Signs login cookies. If unset, everyone is logged out whenever the server restarts |
 | `DATA_DIR` | no | `./data` | Where `users.json` (accounts, scrypt-hashed passwords) is stored. Point it at a Railway volume |
 | `ETSY_QPS` | no | `4` | Max Etsy requests per second |
-| `CACHE_TTL_MINUTES` | no | `60` | Etsy responses are cached in memory to save your daily quota |
+| `CACHE_TTL_MINUTES` | no | `60` | Etsy responses are cached in memory to save your daily quota. Capped at 360 (Etsy API terms: listing data ≤ 6 hours old) |
+| `GEMINI_API_KEY` | no | — | **Free** AI writer for the Listing Builder (Google AI Studio key, no card). Free tier has daily limits; Google may use free-tier prompts to improve its products |
+| `GEMINI_MODEL` | no | `gemini-3.8-flash` | Gemini model; falls back to `gemini-2.5-flash` if unavailable or rate-limited |
+| `ANTHROPIC_API_KEY` | no | — | Paid alternative AI writer (Claude). If both keys are set Gemini is used, unless `AI_PROVIDER=anthropic`. With no key the built-in writer is used |
+| `CLAUDE_MODEL` | no | `claude-opus-5-5` | Model for the AI writer |
+
+## Listing Builder — how it keeps your Etsy shop safe
+
+- Uses only Etsy's **official Open API v3**, read-only (active listing search + listing images). No scraping, no shop login (OAuth), so it can't post, edit or delete anything — you paste the listing into Etsy yourself.
+- Throttled (`ETSY_QPS`) and cached for at most 6 hours, and shows Etsy's required "not endorsed or certified by Etsy" notice.
+- Nothing is copied from other sellers: the generator and the AI only use **aggregate** keyword statistics (tag/phrase frequencies, price range, competition). Trademarked or risky market terms are filtered out before the AI sees them.
+- Market tags are added automatically only when every word matches your own product details; other popular tags are shown as suggestions for you to choose.
+- Every listing is checked against Etsy's rules: 140-char titles, max 3 ALL-CAPS words, banned characters, 13 tags × 20 chars, trademarks/characters/celebrities, "inspired by/dupe/replica", medical claims, emails/links/WhatsApp, unverifiable claims, "vintage" (20+ years) and "handmade" claims, AI disclosure — plus a near-duplicate warning against your saved listings.
 
 ## Accounts
 
@@ -102,6 +116,8 @@ src/analyze.js       Statistics: prices, tags, n-grams, shops, scores, reviews
 src/suggest.js       Keyword ideas (Google / "etsy …" / Amazon autocomplete)
 src/auth.js          Login, sign up, sessions and admin user management
 src/fx.js            Currency conversion to USD (open.er-api.com, cached 12h)
+src/listing-ai.js    Optional Claude writer for the Listing Builder (aggregate market data only)
+public/js/builder/   Etsy policy rules & checker, listing generator, shared builder helpers
 public/              Front-end (vanilla JS single-page app, no build step)
 ```
 
@@ -115,3 +131,11 @@ public/              Front-end (vanilla JS single-page app, no build step)
 4. Settings → Networking → Generate Domain. Aapki website live ho jayegi.
 5. Admin se login karein. Doosre log **Sign up** se account bana sakte hain; admin **Users** page se unhein approve / disable / delete kar sakta hai.
 6. Website khol kar **API Setup → Test connection** dabayen. "Connected" aaye to sab tools use karein.
+
+**Listing Builder (listing banane ka tool):**
+
+1. Sidebar mein **Create → Listing Builder** kholein.
+2. **One listing:** product ki details likhein → **Research Etsy & write listing**. Tool live Etsy data (top tags, title phrases, prices, favorites) dekh kar 3 titles, 13 tags aur description bana deta hai.
+3. **Bulk:** ek line mein ek product likhein (`product | search keyword | keywords | ...`) → **Research & write all**. Sab listings ek saath ban jayengi; **Save all** ya **Export CSV**.
+4. Score 100 ke qareeb ho; red/yellow items ho to **Auto-fix**. Phir **Copy** kar ke Etsy mein khud paste karein.
+5. **Free AI writer:** aistudio.google.com/apikey se Google account se free key banayein aur `.env` mein `GEMINI_API_KEY=...` daal kar server restart karein (optional). Tool aap ki shop mein login nahi karta aur kuch post nahi karta — is liye account safe hai.

@@ -27,14 +27,29 @@ ETSY_SHARED_SECRET=your_shared_secret</div>
           <dt><code>SESSION_SECRET</code></dt><dd>Long random text used to sign login cookies. Without it everyone is logged out on each restart.</dd>
           <dt><code>DATA_DIR</code></dt><dd>Folder where user accounts are saved (default <code>./data</code>). On Railway, attach a volume and point this at it.</dd>
           <dt><code>ETSY_QPS</code></dt><dd>Max Etsy requests per second (default 4).</dd>
-          <dt><code>CACHE_TTL_MINUTES</code></dt><dd>How long Etsy results are cached (default 60). Caching saves your daily API quota.</dd>
+          <dt><code>CACHE_TTL_MINUTES</code></dt><dd>How long Etsy results are cached (default 60, max 360 — Etsy’s API terms allow listing data up to 6 hours old). Caching saves your daily API quota.</dd>
+          <dt><code>GEMINI_API_KEY</code></dt><dd><b>Free</b> AI writer for the <a href="#/builder">Listing Builder</a>: create a key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> (Google account, no card). Free tier has daily limits, and Google may use free-tier prompts (your product details + aggregate Etsy stats) to improve its products. Optional <code>GEMINI_MODEL</code> (default <code>gemini-3.8-flash</code>).</dd>
+          <dt><code>ANTHROPIC_API_KEY</code></dt><dd>Paid alternative (Claude, from <a href="https://console.anthropic.com/" target="_blank" rel="noopener">console.anthropic.com</a>). If both keys are set, Gemini is used unless <code>AI_PROVIDER=anthropic</code>. Without any key the built-in writer is used.</dd>
+          <dt><code>CLAUDE_MODEL</code></dt><dd>AI model for the Listing Builder (default <code>claude-opus-5-5</code>).</dd>
         </dl>
+        <div class="divider"></div>
+        <h3>Listing Builder — keeping your shop safe</h3>
+        <ul class="small" style="margin:0;padding-left:18px;display:grid;gap:6px;color:var(--text-2)">
+          <li>Only Etsy’s official API is used, read-only — no scraping, no shop login, nothing is posted or edited.</li>
+          <li>Requests are throttled and cached (≤ 6 hours), and the app shows Etsy’s required “not endorsed or certified” notice.</li>
+          <li>The AI only sees aggregate keyword statistics, never other sellers’ titles or descriptions.</li>
+          <li>Every listing is checked for trademarks, medical claims, off-Etsy contact info, Etsy limits, vintage/handmade claims and AI disclosure.</li>
+        </ul>
       </div>
       <div class="stack">
         <div class="card">
           <div class="card-head"><h3>Status</h3><button class="btn sm" id="test">Test connection</button></div>
           <div id="st"></div>
           <div id="test-out" style="margin-top:12px"></div>
+        </div>
+        <div class="card">
+          <h3 style="margin-bottom:8px">Listing Builder</h3>
+          <div id="builder-st"><p class="muted small">Checking…</p></div>
         </div>
         <div class="card">
           <h3 style="margin-bottom:8px">What works without a key</h3>
@@ -61,6 +76,17 @@ ETSY_SHARED_SECRET=your_shared_secret</div>
     </dl>`;
   }
   await drawStatus();
+  try {
+    const b = await api('/api/builder/status');
+    if (ctx.alive()) {
+      $('#builder-st', view).innerHTML = `<dl class="kv">
+        <dt>Live Etsy data</dt><dd>${b.etsy ? '<span class="badge good">On</span>' : '<span class="badge bad">Needs the Etsy key</span>'}</dd>
+        <dt>AI writer</dt><dd>${b.ai ? `<span class="badge good">On</span> <span class="muted">${esc(b.model)}</span>` : '<span class="badge">Off — built-in writer</span>'}</dd>
+      </dl>`;
+    }
+  } catch {
+    /* status is optional */
+  }
 
   $('#test', view).addEventListener('click', async (e) => {
     e.target.disabled = true;

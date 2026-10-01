@@ -13,6 +13,8 @@ import * as saved from './pages/saved.js';
 import * as setup from './pages/setup.js';
 import * as account from './pages/account.js';
 import * as users from './pages/users.js';
+import * as builder from './pages/builder.js';
+import * as policyCheck from './pages/policy-check.js';
 
 // Who is logged in (the server redirects to /login when nobody is).
 const { user } = await api('/api/auth/me');
@@ -20,6 +22,13 @@ const isAdmin = user.role === 'admin';
 
 const NAV = [
   { group: null, items: [{ path: '/', label: 'Dashboard', icon: 'home', page: home }] },
+  {
+    group: 'Create',
+    items: [
+      { path: '/builder', label: 'Listing Builder', icon: 'sparkle', page: builder },
+      { path: '/policy', label: 'Policy Checker', icon: 'shield', page: policyCheck },
+    ],
+  },
   {
     group: 'Research',
     items: [
@@ -133,21 +142,10 @@ $('#theme-toggle').addEventListener('click', () => {
     /* ignore */
   }
   paintThemeBtn();
-
-if (!isAdmin) $('#api-status').removeAttribute('href');
-$('#user-box').innerHTML = `<div class="avatar">${esc(user.username[0])}</div>
-  <div class="who"><b>${esc(user.username)}</b><span class="muted small">${isAdmin ? 'Admin' : 'User'}</span></div>
-  <button class="btn ghost xs" id="logout" type="button">Log out</button>`;
-$('#logout').addEventListener('click', async () => {
-  try {
-    await send('POST', '/api/auth/logout');
-  } finally {
-    location.href = '/login';
-  }
-});
 });
 paintThemeBtn();
 
+if (!isAdmin) $('#api-status').removeAttribute('href');
 $('#user-box').innerHTML = `<div class="avatar">${esc(user.username[0])}</div>
   <div class="who"><b>${esc(user.username)}</b><span class="muted small">${isAdmin ? 'Admin' : 'User'}</span></div>
   <button class="btn ghost xs" id="logout" type="button">Log out</button>`;

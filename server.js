@@ -5,9 +5,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as etsy from './src/etsy.js';
 import { EtsyError } from './src/etsy.js';
+import * as ebay from './src/ebay.js';
+import { EbayError } from './src/ebay.js';
 import { mountAuthRoutes, requireLogin, requireAdmin } from './src/auth.js';
 import { getUsdRates } from './src/fx.js';
 import { suggest, MODIFIERS } from './src/suggest.js';
+import { writeListing, isAiConfigured, aiModel, aiProvider, AiError } from './src/listing-ai.js';
 import {
   normalizeListing,
   normalizeShop,
@@ -46,9 +49,11 @@ app.use(
 
 const wrap = (fn) => (req, res) =>
   fn(req, res).catch((err) => {
-    const status = err instanceof EtsyError ? err.status : 500;
+    let status = err instanceof EtsyError || err instanceof EbayError || err instanceof AiError ? err.status : 500;
+    // An upstream 401 (rejected Etsy/eBay key) must not look like an expired login to the browser.
+    if (status === 401) status = 502;
     const code = err.code || 'SERVER_ERROR';
-    if (status >= 500 && code !== 'NOT_CONFIGURED') console.error(`[${req.method} ${req.originalUrl}]`, err);
+    if (status >= 500 && !/NOT_CONFIGURED$/.test(code)) console.error(`[${req.method} ${req.originalUrl}]`, err);
     res.status(status).json({ error: err.message || 'Something went wrong', code });
   });
 
@@ -128,7 +133,16 @@ function parseShopName(input) {
 app.get(
   '/api/status',
   wrap(async (_req, res) => {
-    res.json({ configured: etsy.isConfigured(), usage: etsy.getUsage() });
+    res.json({ configured: etsy.isConfigured(), usage: etsy.getUsage(), ebay: ebay.getStatus() });
+  })
+);
+
+app.get(
+  '/api/ebay/test-connection',
+  requireAdmin,
+  wrap(async (_req, res) => {
+    await ebay.ping();
+    res.json({ ok: true, status: ebay.getStatus() });
   })
 );
 
@@ -290,6 +304,151 @@ app.get(
   })
 );
 
+// ---------- Listing Builder ----------
+// Writes Etsy listings from live Etsy search data (the same read-only analysis as Keyword Research).
+// Nothing is posted to Etsy: the seller reviews the result and pastes it in.
+
+app.get('/api/builder/status', (_req, res) => res.json({ etsy: etsy.isConfigured(), ai: isAiConfigured(), provider: aiProvider(), model: aiModel() }));
+
+app.post(
+  '/api/builder/generate',
+  wrap(async (req, res) => {
+    const { input, research, avoid_titles } = req.body || {};
+    if (!input || typeof input !== 'object' || !String(input.productType || '').trim()) {
+      return res.status(400).json({ error: 'Product type is required', code: 'BAD_REQUEST' });
+    }
+    if (!isAiConfigured()) {
+      return res.status(503).json({ error: 'AI is not set up. Add a free GEMINI_API_KEY (or ANTHROPIC_API_KEY) to the environment.', code: 'AI_NOT_CONFIGURED' });
+    }
+    // Market data for the prompt: aggregates only (served from cache when the page just loaded it).
+    let market = null;
+    const params = searchParams(research || {});
+    if (params.keywords && etsy.isConfigured()) {
+      const depth = Math.max(25, Math.min(300, num(research.depth) || 100));
+      const { count, raw } = await fetchSearch(params, depth);
+      const listings = await enrich(raw);
+      market = { query: params.keywords, total_count: count, summary: summarize(listings), scores: keywordScores(count, listings) };
+    }
+    const avoid = Array.isArray(avoid_titles) ? avoid_titles.filter((t) => typeof t === 'string') : [];
+    const listing = await writeListing(input, market, avoid);
+    res.json({ listing, used_market_data: Boolean(market?.summary?.sample_size) });
+  })
+);
+
+// ---------- eBay ----------
+
+function ebaySearchParams(q) {
+  const marketplace = ebay.marketplaceOf(q.marketplace);
+  const seller = q.seller ? String(q.seller).trim().replace(/[^A-Za-z0-9._-]/g, '').slice(0, 64) : '';
+  return {
+    q: String(q.q || '').trim().slice(0, 200),
+    marketplace,
+    sort: ['best', 'price', '-price', 'newly', 'ending'].includes(q.sort) ? q.sort : 'best',
+    category_ids: /^\d+$/.test(q.category_id || '') ? q.category_id : undefined,
+    filter: ebay.buildFilter({
+      min_price: num(q.min_price),
+      max_price: num(q.max_price),
+      currency: ebay.MARKETPLACES[marketplace].currency,
+      buying: q.buying,
+      condition: q.condition,
+      seller,
+      location: /^[A-Z]{2}$/i.test(q.location || '') ? q.location.toUpperCase() : undefined,
+    }),
+  };
+}
+
+function parseEbayItemId(input) {
+  const s = String(input || '').trim();
+  const m = s.match(/\/itm\/(?:[^/?#]+\/)?(\d{9,15})/) || s.match(/[?&]item=(\d{9,15})/) || s.match(/^(\d{9,15})$/) || s.match(/^v1\|(\d{9,15})\|/);
+  return m ? m[1] : null;
+}
+
+// How many top results get a full item lookup (for eBay's estimated sold quantity).
+const EBAY_DETAIL_TOP = 60;
+
+app.get(
+  '/api/ebay/search',
+  wrap(async (req, res) => {
+    const params = ebaySearchParams(req.query);
+    if (!params.q) return res.status(400).json({ error: 'Enter a keyword', code: 'BAD_REQUEST' });
+    const depth = Math.max(50, Math.min(400, num(req.query.depth) || 100));
+
+    let total = 0;
+    let refinement = {};
+    const raw = [];
+    for (let offset = 0; offset < depth; offset += 200) {
+      const limit = Math.min(200, depth - offset);
+      const body = await ebay.searchItems({ ...params, limit, offset });
+      if (offset === 0) {
+        total = body.total ?? 0;
+        refinement = body.refinement || {};
+      }
+      raw.push(...(body.itemSummaries || []));
+      if ((body.itemSummaries || []).length < limit) break;
+    }
+
+    const rows = raw.map((it, i) => ebay.normalizeItem(it, { rank: i + 1 }));
+    const detailed = await ebay
+      .getItemsBatch(rows.slice(0, EBAY_DETAIL_TOP).map((r) => r.id), params.marketplace)
+      .catch(() => []);
+    const byId = new Map(detailed.map((it) => [it.itemId, ebay.normalizeItem(it)]));
+    for (const r of rows) {
+      const d = byId.get(r.id);
+      if (d) Object.assign(r, { sold: d.sold, available: d.available, sold_per_day: d.sold_per_day, created: r.created || d.created, age_days: r.age_days ?? d.age_days });
+    }
+
+    res.json({
+      query: params.q,
+      marketplace: params.marketplace,
+      marketplace_label: ebay.MARKETPLACES[params.marketplace].label,
+      params: { ...req.query, depth },
+      total_count: total,
+      detail_checked: Math.min(EBAY_DETAIL_TOP, rows.length),
+      scores: ebay.itemScores(total, rows),
+      summary: ebay.summarizeItems(rows, refinement),
+      items: rows,
+      generated_at: new Date().toISOString(),
+    });
+  })
+);
+
+app.get(
+  '/api/ebay/item',
+  wrap(async (req, res) => {
+    const id = parseEbayItemId(req.query.id || req.query.url);
+    if (!id) return res.status(400).json({ error: 'Paste an eBay item URL or item number', code: 'BAD_REQUEST' });
+    const marketplace = ebay.marketplaceOf(req.query.marketplace);
+    const raw = await ebay.getItemByLegacyId(id, marketplace);
+    const item = ebay.itemDetail(raw);
+
+    // Rough market check: search the item's leading title words and compare prices.
+    let market = null;
+    try {
+      const q = item.title.split(/\s+/).slice(0, 6).join(' ');
+      const body = await ebay.searchItems({ q, limit: 100, marketplace });
+      const peers = (body.itemSummaries || []).map((it) => ebay.normalizeItem(it)).filter((r) => r.currency === item.currency && r.id !== item.id);
+      const prices = peers.map((r) => r.price).filter((n) => n != null).sort((a, b) => a - b);
+      const cheaper = item.price != null ? prices.filter((p) => p < item.price).length : null;
+      market = {
+        query: q,
+        total: body.total ?? null,
+        compared: prices.length,
+        median: prices.length ? prices[Math.floor(prices.length / 2)] : null,
+        min: prices[0] ?? null,
+        max: prices[prices.length - 1] ?? null,
+        percentile: cheaper != null && prices.length ? Math.round((cheaper / prices.length) * 100) : null,
+      };
+    } catch {
+      market = null;
+    }
+    res.json({ item, market, marketplace, generated_at: new Date().toISOString() });
+  })
+);
+
+app.get('/api/ebay/marketplaces', (_req, res) =>
+  res.json({ default: ebay.DEFAULT_MARKETPLACE, marketplaces: Object.entries(ebay.MARKETPLACES).map(([id, m]) => ({ id, ...m })) })
+);
+
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Unknown API route', code: 'NOT_FOUND' }));
 
 // SPA fallback
@@ -298,4 +457,7 @@ app.get('*', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'index.h
 app.listen(PORT, () => {
   console.log(`Etsy Research Hub running on http://localhost:${PORT}`);
   if (!etsy.isConfigured()) console.warn('WARNING: ETSY_API_KEY / ETSY_SHARED_SECRET not set — Etsy data features are disabled.');
+  if (!ebay.isConfigured()) console.warn('WARNING: EBAY_CLIENT_ID / EBAY_CLIENT_SECRET not set — eBay data features are disabled.');
+  if (isAiConfigured()) console.log(`Listing Builder AI writer: ${aiModel()}`);
+  else console.warn('NOTE: no GEMINI_API_KEY / ANTHROPIC_API_KEY — Listing Builder uses its built-in writer (AI writer off).');
 });

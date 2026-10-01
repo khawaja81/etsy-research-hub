@@ -3,7 +3,8 @@ import { TTLCache, cached } from './cache.js';
 
 const BASE = (process.env.ETSY_API_BASE || 'https://openapi.etsy.com/v3/application').replace(/\/$/, '');
 const QPS = Math.max(1, Number(process.env.ETSY_QPS) || 4);
-const DEFAULT_TTL = (Number(process.env.CACHE_TTL_MINUTES) || 60) * 60 * 1000;
+// Etsy API Terms: listing data may be shown at most 6 hours old, so the cache is capped at 360 minutes.
+const DEFAULT_TTL = Math.min(360, Number(process.env.CACHE_TTL_MINUTES) || 60) * 60 * 1000;
 
 const cache = new TTLCache({ max: 1500, ttlMs: DEFAULT_TTL });
 

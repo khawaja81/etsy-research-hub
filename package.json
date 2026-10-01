@@ -13,8 +13,10 @@
     "node": ">=18.17"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.131.0",
     "compression": "^1.7.5",
     "dotenv": "^16.4.5",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "nodemon": "^3.1.14"
   }
 }

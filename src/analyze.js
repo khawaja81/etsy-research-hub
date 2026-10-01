@@ -179,7 +179,7 @@ export function priceHistogram(prices, target = 8) {
   return buckets;
 }
 
-function frequency(listings, pick, top = 40) {
+export function frequency(listings, pick, top = 40) {
   const map = new Map();
   for (const l of listings) {
     const seen = new Set(pick(l));
@@ -222,7 +222,7 @@ function titlePhrases(title) {
     .filter((seg) => seg.length);
 }
 
-function ngramsOf(title, n) {
+export function ngramsOf(title, n) {
   const out = [];
   for (const seg of titlePhrases(title)) {
     for (let i = 0; i + n <= seg.length; i++) {

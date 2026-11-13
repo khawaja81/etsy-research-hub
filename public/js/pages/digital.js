@@ -3,6 +3,7 @@ import {
   listingColumns, tagsExpand, scoreColor, scoreBadge, saveKeyword, isSaved, pushHistory, toast, copyText,
 } from '../ui.js';
 import { icons } from '../icons.js';
+import { seoSection } from '../seo-tiles.js';
 import { EtsyPolicy } from '../builder/policy.js';
 
 // AI risk is our own editorial judgement of how exposed a niche is under Etsy's Creativity Standards
@@ -201,6 +202,8 @@ function renderResults(out, data, ctx) {
         info: 'If a few shops own most listings, the niche is dominated by bundles from big shops.',
       })}
     </div>
+
+    ${seoSection(data.seo, n)}
 
     ${risk ? aiPolicyCard(`<div class="notice ${RISK[risk.risk][1]}" style="margin-bottom:12px"><div class="icon">🤖</div><div>
       <h3>${esc(risk.name)}: ${RISK[risk.risk][0].toLowerCase()}</h3><p>${esc(risk.note)}</p></div></div>`) : aiPolicyCard()}

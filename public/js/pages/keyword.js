@@ -3,6 +3,7 @@ import {
   listingColumns, tagsExpand, scoreColor, scoreBadge, saveKeyword, isSaved, pushHistory, toast, copyText, store, tipAttr,
 } from '../ui.js';
 import { icons } from '../icons.js';
+import { seoSection } from '../seo-tiles.js';
 
 let categories = null;
 
@@ -175,6 +176,8 @@ function renderResults(out, data, ctx) {
         info: 'A high share means Etsy is ranking new listings for this search — easier for a new shop to break in.',
       })}
     </div>
+
+    ${seoSection(data.seo, n)}
 
     <div class="grid grid-2">
       <div class="card">

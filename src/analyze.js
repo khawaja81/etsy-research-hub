@@ -420,3 +420,77 @@ export function reviewStats(reviews) {
     }, {}),
   };
 }
+
+// ---------- SEO / traffic estimates ----------
+// Etsy's API does not expose search volume, click-through rate or real sales. Everything below is
+// derived from what IS public (listing views, favorites, age, tags, titles, shop sales) and is
+// labelled as an estimate in the UI.
+const QUERY_STOP = new Set(['a', 'an', 'and', 'the', 'for', 'of', 'to', 'in', 'on', 'with', 'by', 'or']);
+const stem = (w) => (w.length > 3 ? w.replace(/(ies)$/, 'y').replace(/s$/, '') : w);
+const toks = (s) => (decode(s).toLowerCase().match(/[a-z0-9']+/g) || []).filter((w) => !QUERY_STOP.has(w)).map(stem);
+const share = (list, fn) => (list.length ? Math.round((list.filter(fn).length / list.length) * 1000) / 10 : 0);
+
+export function seoMetrics(query, totalCount, listings, summary) {
+  const top = listings.slice(0, 48);
+  const qt = toks(query);
+  const phrase = qt.join(' ');
+  const hasAll = (text) => {
+    const t = new Set(toks(text));
+    return qt.length > 0 && qt.every((w) => t.has(w));
+  };
+  const titleExact = share(top, (l) => toks(l.title).join(' ').includes(phrase));
+  const titleAll = share(top, (l) => hasAll(l.title));
+  const tagMatch = share(top, (l) => l.tags.some((t) => hasAll(t)));
+
+  const medFav = stat(top.map((l) => l.favorites)).median ?? 0;
+  const medShopSales = stat(top.map((l) => l.shop_sales)).median ?? 0;
+  const bigShops = share(top, (l) => (l.shop_sales || 0) >= 10000);
+  const competition = Math.round(clamp((Math.log10(Math.max(totalCount || 1, 1)) - 2) * 25));
+  const optimization = Math.round((titleExact + tagMatch) / 2);
+  const strength = Math.round(clamp(25 * Math.log10(1 + medFav)));
+  const authority = Math.round(clamp(20 * Math.log10(1 + medShopSales)));
+  const difficulty = Math.round(clamp(0.35 * competition + 0.2 * optimization + 0.25 * strength + 0.2 * authority));
+  const diffLabel = difficulty < 30 ? 'Easy' : difficulty < 50 ? 'Moderate' : difficulty < 70 ? 'Hard' : 'Very hard';
+
+  const rates = top.filter((l) => isNum(l.views) && l.views > 0 && isNum(l.favorites)).map((l) => (l.favorites / l.views) * 100);
+  const favRate = stat(rates).median;
+  const vpd = top.map((l) => l.views_per_day).filter(isNum);
+  const avgViewsPerDay = vpd.length ? round2(vpd.reduce((a, b) => a + b, 0) / vpd.length) : null;
+  const monthlyViewsTop = vpd.length ? Math.round(vpd.reduce((a, b) => a + b, 0) * 30) : null;
+
+  const demand = keywordScores(totalCount, listings).demand;
+  const interest = demand == null ? 'Unknown' : demand >= 70 ? 'Very high' : demand >= 50 ? 'High' : demand >= 30 ? 'Medium' : demand >= 15 ? 'Low' : 'Very low';
+
+  // Tag picks: how many top listings use the tag, and do those listings get favorited more than average?
+  const tags = (summary?.tags || []).slice(0, 30).map((t) => {
+    const multi = t.term.includes(' ');
+    const strong = t.avg_favorites != null && t.avg_favorites > medFav;
+    const kind = t.pct >= 40 ? 'Must-use' : t.pct >= 15 ? 'Strong' : strong && multi ? 'Long-tail gem' : 'Optional';
+    return { term: t.term, pct: t.pct, avg_favorites: t.avg_favorites, kind };
+  });
+
+  return {
+    difficulty,
+    ease: 100 - difficulty,
+    difficulty_label: diffLabel,
+    parts: { competition, optimization, strength, authority },
+    exact_title_match: titleExact,
+    all_words_title_match: titleAll,
+    tag_match: tagMatch,
+    big_shop_share: bigShops,
+    median_shop_sales: medShopSales,
+    fav_rate: favRate != null ? round2(favRate) : null,
+    avg_views_per_day: avgViewsPerDay,
+    monthly_views_top: monthlyViewsTop,
+    search_interest: interest,
+    tags,
+    tip:
+      difficulty < 30
+        ? 'Few top listings target this phrase exactly and the leaders are weak — a well-optimized new listing can rank.'
+        : difficulty < 50
+        ? 'Winnable with a precise title (exact phrase first), all 13 tags and strong first photo.'
+        : difficulty < 70
+        ? 'Established listings dominate. Narrow the keyword (add style, audience or format) before investing.'
+        : 'Dominated by strong, well-optimized listings from big shops. Pick a long-tail variation instead.',
+  };
+}

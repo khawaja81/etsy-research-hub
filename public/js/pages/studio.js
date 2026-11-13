@@ -1,9 +1,11 @@
 import { $, $$, esc, store, toast } from '../ui.js';
 import { icons } from '../icons.js';
-import { PALETTES, FONTS, sheetDoc, docShell, chunk, lines, list } from '../studio-core.js';
+import { PALETTES, FONTS, sheetDoc, docShell, pagesToBody, chunk, lines, list } from '../studio-core.js';
 import { createEditor } from '../studio-editor.js';
 import { PLANNERS } from '../studio-planners.js';
 import { WEDDING } from '../studio-wedding.js';
+import { EXTRA } from '../studio-extra.js';
+import { LOOKS, loadAll, saveTemplate, deleteTemplate, downloadTemplate, importFile } from '../studio-templates.js';
 
 /*
  * Design Studio — builds original, print-ready digital products with fixed layouts.
@@ -199,14 +201,15 @@ const PARTY = {
 };
 for (const p of Object.values(PARTY)) p.group = 'Seasonal & party';
 PARTY.seating.group = 'Wedding';
-const PRODUCTS = { ...PLANNERS, ...WEDDING, ...PARTY };
-const GROUPS = ['Planners', 'Wedding', 'Seasonal & party'];
+const PRODUCTS = { ...PLANNERS, ...WEDDING, ...EXTRA, ...PARTY };
+const GROUPS = ['Planners', 'Wedding', 'Cards & invitations', 'Kids & family', 'Home & business', 'Seasonal & party'];
 
 // Used by other pages to offer "Design this" for a researched keyword.
 export function matchProduct(q) {
   const s = String(q || '').toLowerCase();
   const rules = [['coupon', /coupon/], ['bingo', /bingo/], ['tags', /gift tag/], ['ramadan', /ramadan|eid/], ['seating', /seating chart/], ['santa', /secret santa/], ['nye', /new year|nye/],
     ['invite', /wedding invit/], ['savedate', /save the date/], ['rsvp', /rsvp/], ['program', /wedding program/], ['tablenum', /table number/], ['place', /place card/], ['thanks', /thank you card/], ['welcome', /welcome sign/], ['timeline', /wedding timeline/], ['checklist', /wedding (planner|checklist)/],
+    ['birthday', /birthday invit/], ['baby', /baby shower/], ['certificate', /^certificate|certificate template/], ['recipe', /recipe card/], ['bookmark', /bookmark/], ['orderthanks', /thank you for your order/], ['chores', /chore/], ['reward', /reward chart|star chart/], ['milestone', /milestone/], ['menu', /menu template|menu printable/], ['voucher', /gift certificate|voucher/], ['labels', /pantry label|jar label|label/],
     ['daily', /daily planner/], ['weekly', /weekly planner/], ['monthly', /monthly (planner|calendar)|calendar printable/], ['habit', /habit/], ['budget', /budget/], ['meal', /meal (plan|planner)/], ['todo', /to.?do/], ['goals', /goal/], ['gratitude', /gratitude|journal/], ['workout', /workout|fitness/], ['cleaning', /cleaning/], ['student', /student|school planner|teacher planner/]];
   return rules.find(([, re]) => re.test(s))?.[0] || null;
 }
@@ -225,7 +228,16 @@ export async function render(view, ctx) {
       <h1>Design Studio</h1>
       <p>Pick a product, edit the words, choose colors and fonts, then save it as a print-ready PDF. Layouts are built into the app — <b>no AI is used</b>, so the design is yours and fits Etsy’s Creativity Standards (“Designed by” you).</p>
     </div></div>
-    ${GROUPS.map((g) => `<div class="muted small" style="margin:8px 0 4px;font-weight:600">${g}</div><div class="chips">${Object.entries(PRODUCTS).filter(([, p]) => p.group === g).map(([k, p]) => `<a class="chip ${k === key ? 'accent' : ''}" href="#/studio?p=${k}">${p.emoji} ${esc(p.label)}</a>`).join('')}</div>`).join('')}
+    <input class="input" id="st-search" placeholder="Search ${Object.keys(PRODUCTS).length} templates — e.g. planner, wedding, kids, menu…" style="max-width:420px;margin-bottom:6px">
+    <div id="st-groups">${GROUPS.map((g) => `<div class="st-g"><div class="muted small" style="margin:8px 0 4px;font-weight:600">${g}</div><div class="chips">${Object.entries(PRODUCTS).filter(([, p]) => p.group === g).map(([k, p]) => `<a class="chip ${k === key ? 'accent' : ''}" data-k="${esc((p.label + ' ' + g + ' ' + (p.query || '')).toLowerCase())}" href="#/studio?p=${k}">${p.emoji} ${esc(p.label)}</a>`).join('')}</div></div>`).join('')}</div>
+    <details class="card" id="st-looks" style="margin:14px 0 0"><summary style="cursor:pointer;font-weight:600">🎨 Template looks — ${LOOKS.length} ready-made styles for this design (click one to apply)</summary>
+      <div id="st-looks-grid" style="display:flex;flex-wrap:wrap;gap:12px;margin-top:12px"></div></details>
+    <details class="card" id="st-mine" style="margin:10px 0 14px"><summary style="cursor:pointer;font-weight:600">📁 My templates &amp; import</summary>
+      <div class="row" style="margin:10px 0;flex-wrap:wrap">
+        <label class="btn secondary sm" style="cursor:pointer">⬆ Import template / image<input type="file" id="st-import" accept=".json,.html,.htm,.png,.jpg,.jpeg,.webp,.svg" hidden></label>
+        <span class="muted small">Import a template exported from here (.json), an HTML file, or a PNG/JPG/SVG page (e.g. exported from Canva) to use as a background and add editable text on top.</span></div>
+      <div id="st-mine-list"></div>
+      <p class="muted small" style="margin-top:8px">Saved templates live in this browser only — use <b>Export</b> to keep a backup file. Only import designs you created or have the right to use.</p></details>
     <div class="grid split-wide">
       <div class="card stack" id="st-form">
         <div><h3>${prod.emoji} ${esc(prod.label)}</h3><p class="muted small">${esc(prod.note)}</p></div>
@@ -253,7 +265,8 @@ export async function render(view, ctx) {
         <p class="muted small">In the print window choose <b>Save as PDF</b>, the matching paper size, margins <b>None</b>, and tick <b>Background graphics</b>. Make a Letter and an A4 version and include both (Etsy allows 5 files, 20&nbsp;MB each).</p>
       </div>
       <div class="card"><div class="card-head"><div><h3>Preview</h3><p id="st-hint">Updates as you type</p></div>
-          <button class="btn" id="st-edit">✏️ Customize like Canva</button></div>
+          <div class="row"><button class="btn secondary sm" id="st-save" title="Save this design to My templates">💾 Save as my template</button>
+          <button class="btn" id="st-edit">✏️ Customize like Canva</button></div></div>
         <div id="ed-bar" hidden style="margin-bottom:8px"></div>
         <iframe id="st-prev" title="Preview" style="width:100%;height:70vh;border:1px solid var(--border);border-radius:10px;background:#e8e6e2"></iframe></div>
     </div>
@@ -330,6 +343,87 @@ export async function render(view, ctx) {
     w.document.close();
     const go = () => setTimeout(() => w.print(), 400);
     (w.document.fonts?.ready || Promise.resolve()).then(go, go);
+  });
+
+  // ----- search across all templates -----
+  $('#st-search', view).addEventListener('input', (e) => {
+    const q = e.target.value.toLowerCase().trim();
+    $$('#st-groups .chip', view).forEach((c) => { c.style.display = !q || c.dataset.k.includes(q) ? '' : 'none'; });
+    $$('#st-groups .st-g', view).forEach((g) => { g.style.display = [...g.querySelectorAll('.chip')].some((c) => c.style.display !== 'none') ? '' : 'none'; });
+  });
+
+  // ----- template looks (palette + fonts) with live thumbnails -----
+  const syncStyleInputs = () => $$('[data-s]', view).forEach((el) => { if (state[el.dataset.s] !== undefined) el.value = state[el.dataset.s]; });
+  const applyLook = (l) => {
+    Object.assign(state, { palette: l.palette, head: l.head, body: l.body });
+    store.set('studio-common', state);
+    syncStyleInputs();
+    if (editing) ed.applyTheme(state); else draw();
+  };
+  const looks = $('#st-looks', view);
+  let looksDone = false;
+  looks.addEventListener('toggle', () => {
+    if (!looks.open || looksDone) return;
+    looksDone = true;
+    let first;
+    try { first = prod.build(vals)[0]; } catch { first = '<p>Preview unavailable</p>'; }
+    $('#st-looks-grid', view).innerHTML = LOOKS.map((l) => `<button type="button" class="card" data-look="${l.id}" style="padding:6px;cursor:pointer;text-align:center;width:150px;border:1px solid var(--border);background:var(--surface)">
+      <iframe tabindex="-1" style="width:136px;height:182px;border:0;pointer-events:none;background:#e8e6e2;border-radius:6px" srcdoc="${esc(sheetDoc({ pages: [first], o: { ...state, palette: l.palette, head: l.head, body: l.body, zoom: 0.165 }, preview: true }))}"></iframe>
+      <div class="small" style="margin-top:4px;font-weight:600">${esc(l.name)}</div></button>`).join('');
+  });
+  $('#st-looks-grid', view).addEventListener('click', (e) => {
+    const b = e.target.closest('[data-look]');
+    if (b) applyLook(LOOKS.find((l) => l.id === b.dataset.look));
+  });
+
+  // ----- my templates, import, save -----
+  const gstate = () => ({ palette: state.palette, head: state.head, body: state.body, paper: state.paper });
+  const openTemplate = (tpl) => {
+    clearTimeout(t);
+    if (editing) ed.disable();
+    Object.assign(state, tpl.state || {});
+    store.set('studio-common', state);
+    syncStyleInputs();
+    setEditing(true);
+    frame.addEventListener('load', () => { ed.enable({ fonts: tpl.fonts || [] }); ed.applyTheme(state); }, { once: true });
+    frame.srcdoc = docShell({ bodyHtml: tpl.html, o: { ...opts(), title: tpl.name, extraFonts: tpl.fonts || [] }, preview: true });
+    frame.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+  const renderMine = () => {
+    const all = loadAll();
+    $('#st-mine-list', view).innerHTML = all.length
+      ? `<div class="stack" style="gap:6px">${all.map((x) => `<div class="row" style="gap:8px;align-items:center;border:1px solid var(--border);border-radius:8px;padding:6px 10px">
+          <div style="flex:1;min-width:0"><b>${esc(x.name)}</b> <span class="muted small">${esc(PRODUCTS[x.product]?.label || 'Imported')} · ${new Date(x.created).toLocaleDateString()}</span></div>
+          <button class="btn sm" data-open="${x.id}">Open &amp; edit</button><button class="btn secondary sm" data-export="${x.id}">Export</button><button class="btn secondary sm" data-del="${x.id}">Delete</button></div>`).join('')}</div>`
+      : '<p class="muted small">No saved templates yet. Design something and press “Save as my template”.</p>';
+  };
+  renderMine();
+  $('#st-mine-list', view).addEventListener('click', (e) => {
+    const id = (e.target.closest('[data-open]') || e.target.closest('[data-export]') || e.target.closest('[data-del]'))?.dataset;
+    const tpl = loadAll().find((x) => x.id === (id?.open || id?.export || id?.del));
+    if (!tpl) return;
+    if (id.open) openTemplate(tpl);
+    else if (id.export) downloadTemplate(tpl);
+    else if (confirm(`Delete “${tpl.name}”?`)) { deleteTemplate(tpl.id); renderMine(); }
+  });
+  $('#st-import', view).addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    try {
+      const tpl = await importFile(file);
+      toast(`Imported “${tpl.name}” — edit it, then press Save as my template`);
+      openTemplate(tpl);
+    } catch (err) {
+      toast(err.message);
+      alert(err.message);
+    }
+  });
+  $('#st-save', view).addEventListener('click', () => {
+    const name = prompt('Name for this template', `${prod.label} — my design`);
+    if (!name) return;
+    const html = editing ? ed.exportBody({ keepMeta: true }) : pagesToBody(prod.build(vals), opts());
+    const r = saveTemplate({ name: name.slice(0, 80), product: key, state: gstate(), fonts: editing ? ed.usedFonts() : [], html });
+    if (r.ok) { toast('Saved to My templates'); renderMine(); $('#st-mine', view).open = true; } else alert(r.error);
   });
   draw();
 }

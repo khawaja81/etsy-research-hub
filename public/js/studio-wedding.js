@@ -9,17 +9,17 @@ import { chunk, lines, list, col, head, sec, ruled, todo, row, table } from './s
 
 const num = (v, d, lo, hi) => Math.max(lo, Math.min(hi, Number(v) || d));
 const sel = (id, label, options, def) => ({ id, label, type: 'select', options, def });
-const STYLES = [['classic', 'Classic double border'], ['arch', 'Arch'], ['modern', 'Modern lines'], ['corners', 'Corner ornaments']];
-const SIZES = [['a2', 'A2 — 4.25×5.5 in (4 per sheet)'], ['5x7', '5×7 in (1 per sheet, trim marks)']];
-const LS = { a2: { w: 4.25, h: 5.5, fs: 11 }, '5x7': { w: 5, h: 7, fs: 14.5 } };
+export const STYLES = [['classic', 'Classic double border'], ['arch', 'Arch'], ['modern', 'Modern lines'], ['corners', 'Corner ornaments']];
+export const SIZES = [['a2', 'A2 — 4.25×5.5 in (4 per sheet)'], ['5x7', '5×7 in (1 per sheet, trim marks)']];
+export const LS = { a2: { w: 4.25, h: 5.5, fs: 11 }, '5x7': { w: 5, h: 7, fs: 14.5 } };
 
-const common = [
+export const common = [
   sel('style', 'Card style', STYLES, 'classic'),
   sel('size', 'Card size', SIZES, 'a2'),
   sel('blank', 'Details', [['no', 'Print my details'], ['yes', 'Leave blank for handwriting']], 'no'),
 ];
 
-const ORN = '<div style="display:flex;align-items:center;gap:.5em;justify-content:center;margin:.7em 0;color:var(--acc)"><span style="width:2.2em;height:1px;background:var(--acc)"></span>◆<span style="width:2.2em;height:1px;background:var(--acc)"></span></div>';
+export const ORN = '<div style="display:flex;align-items:center;gap:.5em;justify-content:center;margin:.7em 0;color:var(--acc)"><span style="width:2.2em;height:1px;background:var(--acc)"></span>◆<span style="width:2.2em;height:1px;background:var(--acc)"></span></div>';
 const cornerSvg = (pos) => {
   const t = { tl: '', tr: 'transform:scaleX(-1)', bl: 'transform:scaleY(-1)', br: 'transform:scale(-1,-1)' }[pos];
   const place = { tl: 'top:.2in;left:.2in', tr: 'top:.2in;right:.2in', bl: 'bottom:.2in;left:.2in', br: 'bottom:.2in;right:.2in' }[pos];
@@ -27,7 +27,7 @@ const cornerSvg = (pos) => {
 };
 
 // A decorative frame + centered content, sized in em so it scales with the card.
-function frame(style, inner) {
+export function frame(style, inner) {
   const abs = 'position:absolute;';
   let deco = '';
   let pad = '.5in .45in';
@@ -38,32 +38,32 @@ function frame(style, inner) {
   return `${deco}<div style="${abs}inset:0;padding:${pad};display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;line-height:1.35">${inner}</div>`;
 }
 
-const field = (v, id, w = 12) => (v.blank === 'yes'
+export const field = (v, id, w = 12) => (v.blank === 'yes'
   ? `<span style="display:inline-block;width:${w}em;border-bottom:1px solid currentColor">&nbsp;</span>`
   : esc(v[id]));
-const names = (v) => `<div class="h" style="font-size:2.3em;line-height:1.1">${field(v, 'n1', 9)}</div><div class="h" style="font-size:1.3em;margin:.1em 0">&amp;</div><div class="h" style="font-size:2.3em;line-height:1.1">${field(v, 'n2', 9)}</div>`;
-const caps = (t) => `<div style="letter-spacing:.22em;text-transform:uppercase;font-size:.72em">${t}</div>`;
+export const names = (v) => `<div class="h" style="font-size:2.3em;line-height:1.1">${field(v, 'n1', 9)}</div><div class="h" style="font-size:1.3em;margin:.1em 0">&amp;</div><div class="h" style="font-size:2.3em;line-height:1.1">${field(v, 'n2', 9)}</div>`;
+export const caps = (t) => `<div style="letter-spacing:.22em;text-transform:uppercase;font-size:.72em">${t}</div>`;
 
-// Lays copies of one card onto sheets: 4 per sheet for A2, 1 per sheet (with trim marks) for 5x7.
-function cards(v, inner, count = 1) {
+// Lays a list of card contents onto sheets: 4 per sheet for A2, 1 per sheet (with trim marks) for 5x7.
+export function layoutCards(v, inners) {
   const S = LS[v.size] || LS.a2;
   const card = (html) => `<div class="st-card" style="width:${S.w}in;height:${S.h}in;position:relative;overflow:hidden;background:var(--bg);font-size:${S.fs}px;color:var(--ink)">${frame(v.style, html)}</div>`;
   if (v.size === '5x7') {
-    const marks = '<div style="position:absolute;left:0;right:0;top:50%;border-top:1px dashed #bbb;opacity:.0"></div>';
-    return Array.from({ length: count }, () => ({
+    return inners.map((inner) => ({
       flush: true,
-      html: `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;position:relative">${marks}<div style="outline:1px dashed #999;outline-offset:6px">${card(inner)}</div></div>`,
+      html: `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;position:relative"><div style="outline:1px dashed #999;outline-offset:6px">${card(inner)}</div></div>`,
     }));
   }
-  const sheets = chunk(Array.from({ length: count }, () => inner), 4);
-  return sheets.map((g) => ({
+  return chunk(inners, 4).map((g) => ({
     flush: true,
     html: `<div style="width:8.5in;height:11in;margin:0 auto;display:grid;grid-template-columns:4.25in 4.25in;grid-template-rows:5.5in 5.5in;position:relative">${g.map(card).join('')}
       <div style="position:absolute;left:4.25in;top:0;height:.18in;border-left:1px solid #999"></div><div style="position:absolute;left:4.25in;bottom:0;height:.18in;border-left:1px solid #999"></div>
       <div style="position:absolute;top:5.5in;left:0;width:.18in;border-top:1px solid #999"></div><div style="position:absolute;top:5.5in;right:0;width:.18in;border-top:1px solid #999"></div></div>`,
   }));
 }
-const sheetCount = (v, copies) => (v.size === '5x7' ? copies : Math.max(4, Math.ceil(copies / 4) * 4));
+// Same card repeated `count` times.
+export const cards = (v, inner, count = 1) => layoutCards(v, Array.from({ length: count }, () => inner));
+export const sheetCount = (v, copies) => (v.size === '5x7' ? copies : Math.max(4, Math.ceil(copies / 4) * 4));
 
 export const WEDDING = {
   invite: {

@@ -40,13 +40,13 @@ export function createEditor({ frame, bar, getState, notify }) {
   const doc = () => frame.contentDocument;
 
   // ---------- history ----------
-  const cleanClone = (forExport) => {
+  const cleanClone = (forExport, keepMeta) => {
     const c = doc().body.cloneNode(true);
     c.querySelectorAll('.ed-ui').forEach((n) => n.remove());
     c.querySelectorAll('.ed-sel').forEach((n) => { n.classList.remove('ed-sel'); if (!n.getAttribute('class')) n.removeAttribute('class'); });
     if (forExport) {
       c.querySelectorAll('[contenteditable]').forEach((n) => { n.removeAttribute('contenteditable'); n.removeAttribute('spellcheck'); });
-      c.querySelectorAll('[data-t]').forEach((n) => n.removeAttribute('data-t'));
+      if (!keepMeta) c.querySelectorAll('[data-t]').forEach((n) => n.removeAttribute('data-t'));
     }
     return c;
   };
@@ -67,6 +67,9 @@ export function createEditor({ frame, bar, getState, notify }) {
   const doRedo = () => { if (redo.length) { const h = redo.pop(); undo.push(h); restore(h); } };
 
   // ---------- selection ----------
+  // Any normal element can be nudged/resized too (relative positioning keeps the page layout intact).
+  const NO_HANDLE = new Set(['TR', 'TD', 'TH', 'TABLE', 'TBODY', 'THEAD', 'COL', 'COLGROUP', 'SECTION', 'BODY', 'HTML', 'IMG', 'SPAN', 'B', 'I', 'U', 'BR']);
+  const canHandle = (el) => !NO_HANDLE.has(el.tagName) && !el.classList.contains('sheet');
   function removeUi() { doc().querySelectorAll('.ed-ui').forEach((n) => n.remove()); }
   function clearSel() {
     if (sel) sel.classList.remove('ed-sel');
@@ -78,7 +81,8 @@ export function createEditor({ frame, bar, getState, notify }) {
     sel = el;
     if (el) {
       el.classList.add('ed-sel');
-      if (el.classList.contains('ed-obj')) {
+      if (el.classList.contains('ed-obj') || canHandle(el)) {
+        if (!el.classList.contains('ed-obj') && getComputedStyle(el).position === 'static') el.style.position = 'relative'; // anchor for the handles; no layout change
         for (const cls of ['ed-move', 'ed-resize']) {
           const u = doc().createElement('div');
           u.className = `ed-ui ${cls}`;
@@ -160,6 +164,16 @@ export function createEditor({ frame, bar, getState, notify }) {
     r.readAsDataURL(file);
   }
 
+  function pageImage(file) {
+    if (!file) return;
+    if (file.size > 4 * 1024 * 1024) { notify('Image is over 4 MB — use a smaller file'); return; }
+    const sh = sheetOf();
+    if (!sh) return;
+    const r = new FileReader();
+    r.onload = () => { sh.style.backgroundImage = `url("${r.result}")`; sh.style.backgroundSize = 'cover'; sh.style.backgroundPosition = 'center'; snap(); };
+    r.readAsDataURL(file);
+  }
+
   // ---------- page + element operations ----------
   const strip = (n) => { n.querySelectorAll('.ed-ui').forEach((x) => x.remove()); n.classList.remove('ed-sel'); n.querySelectorAll('.ed-sel').forEach((x) => x.classList.remove('ed-sel')); };
   function dupPage() {
@@ -224,6 +238,10 @@ export function createEditor({ frame, bar, getState, notify }) {
       <button class="btn secondary sm" data-c="duppage">⧉ Duplicate page</button><button class="btn secondary sm" data-c="blankpage">＋ Blank page</button><button class="btn secondary sm" data-c="delpage">🗑 Delete page</button>
       <button class="btn secondary sm" data-c="copycard" title="For invitations: copy this card's edits to all cards">⇉ Copy card to all</button>
       <span class="ed-sep"></span>
+      <label class="small" title="Page background color">Page <input type="color" data-c="pagebg"></label>
+      <label class="btn secondary sm" style="cursor:pointer" title="Use an image as page background">🖼 Page image<input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" data-c="pageimg" hidden></label>
+      <button class="btn secondary sm" data-c="nopagebg">no page image</button>
+      <span class="ed-sep"></span>
       <label class="small">Zoom <select class="input" data-c="zoom" style="width:auto;display:inline-block;padding:3px 6px"><option value="0.5">50%</option><option value="0.62">62%</option><option value="0.8" selected>80%</option><option value="1">100%</option></select></label>
     </div>
     <div class="ed-row" id="ed-sel-row">
@@ -237,7 +255,7 @@ export function createEditor({ frame, bar, getState, notify }) {
       <label class="small" title="Fill color">Fill <input type="color" data-c="fill"></label><button class="btn secondary sm" data-c="nofill">no fill</button>
       <label class="small" title="Border color">Border <input type="color" data-c="border"></label><button class="btn secondary sm" data-c="noborder">no border</button>
       <span class="ed-sep"></span>
-      <button class="btn secondary sm" data-c="dup">⧉ Duplicate</button><button class="btn secondary sm" data-c="front">▲ Front</button><button class="btn secondary sm" data-c="back">▼ Back</button><button class="btn secondary sm" data-c="del">🗑 Delete</button>
+      <button class="btn secondary sm" data-c="dup">⧉ Duplicate</button><button class="btn secondary sm" data-c="front">▲ Front</button><button class="btn secondary sm" data-c="back">▼ Back</button><button class="btn secondary sm" data-c="resetmove" title="Put a moved element back in place">↺ Reset move</button><button class="btn secondary sm" data-c="del">🗑 Delete</button>
     </div>
     <p class="muted small" style="margin:6px 0 0">Click any text to type. Click an element to restyle it. Added items have a ● handle to move and a ■ handle to resize. Select part of a text to bold / recolor just that part.</p>
     <style>.ed-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px}.ed-sep{width:1px;height:20px;background:var(--border)}.ed-row input[type=color]{width:30px;height:26px;padding:0;border:1px solid var(--border);border-radius:6px;background:none;vertical-align:middle}.ed-sw{display:inline-block;width:18px;height:18px;border-radius:50%;border:1px solid #0003;cursor:pointer;margin-right:3px}</style>`;
@@ -287,6 +305,10 @@ export function createEditor({ frame, bar, getState, notify }) {
       case 'fill': setStyle('background', v); break;
       case 'border': if (sel) { sel.style.borderStyle = sel.style.borderStyle && sel.style.borderStyle !== 'none' ? sel.style.borderStyle : 'solid'; if (!px(getComputedStyle(sel).borderTopWidth)) sel.style.borderWidth = '2px'; setStyle('borderColor', v); } break;
       case 'image': addImage(target.files?.[0]); target.value = ''; break;
+      case 'pagebg': { const sh = sheetOf(); if (sh) { sh.style.backgroundColor = v; snap(); } break; }
+      case 'nopagebg': { const sh = sheetOf(); if (sh) { sh.style.backgroundImage = ''; snap(); } break; }
+      case 'pageimg': pageImage(target.files?.[0]); target.value = ''; break;
+      case 'resetmove': if (sel && !sel.classList.contains('ed-obj')) { sel.style.position = ''; sel.style.left = ''; sel.style.top = ''; sel.style.width = ''; sel.style.height = ''; snap(); } break;
       default: break;
     }
   };
@@ -302,7 +324,7 @@ export function createEditor({ frame, bar, getState, notify }) {
   });
   bar.addEventListener('change', (e) => {
     const t = e.target;
-    if (t.matches('input[type=file]')) act('image', null, t);
+    if (t.matches('input[type=file]')) act(t.dataset.c, null, t);
     if (t.matches('input[type=number]')) act('size', t.value, t);
   });
 
@@ -344,6 +366,7 @@ export function createEditor({ frame, bar, getState, notify }) {
       const own = [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
       if (own) { el.setAttribute('contenteditable', 'true'); el.setAttribute('spellcheck', 'false'); }
     });
+    d.querySelectorAll('.ed-obj[data-t=text]').forEach((el) => el.setAttribute('contenteditable', 'true'));
     d.addEventListener('click', (e) => {
       const t = e.target;
       const sh = t.closest?.('.sheet');
@@ -361,22 +384,24 @@ export function createEditor({ frame, bar, getState, notify }) {
       else if ((e.key === 'Delete' || e.key === 'Backspace') && sel && !d.activeElement?.isContentEditable) { e.preventDefault(); delSel(); }
     });
     d.addEventListener('mousedown', (e) => {
-      const obj = e.target.closest?.('.ed-obj');
+      const ui = e.target.closest?.('.ed-ui');
+      const obj = ui ? ui.parentElement : e.target.closest?.('.ed-obj');
       if (!obj) return;
-      const ui = e.target.closest('.ed-ui');
       const resize = ui?.classList.contains('ed-resize');
       const moveHandle = ui?.classList.contains('ed-move');
       const free = obj.dataset.t === 'shape' || obj.dataset.t === 'image';
       if (!resize && !moveHandle && !free) return; // text objects: normal typing
       e.preventDefault();
       if (sel !== obj) select(obj);
+      const isObj = obj.classList.contains('ed-obj');
+      if (!isObj && getComputedStyle(obj).position === 'static') obj.style.position = 'relative';
       const cs = getComputedStyle(obj);
       const sx = e.clientX, sy = e.clientY, l = px(cs.left), t = px(cs.top), w = px(cs.width), h = px(cs.height);
       const mv = (ev) => {
         const dx = (ev.clientX - sx) / zoom, dy = (ev.clientY - sy) / zoom;
         if (resize) {
           obj.style.width = `${Math.max(16, w + dx)}px`;
-          if (obj.dataset.t !== 'text' && obj.dataset.t !== 'line') obj.style.height = `${Math.max(8, h + dy)}px`;
+          if (obj.dataset.t !== 'text' && obj.dataset.t !== 'line') { obj.style.height = `${Math.max(8, h + dy)}px`; if (!isObj) obj.style.flex = 'none'; }
         } else { obj.style.left = `${l + dx}px`; obj.style.top = `${t + dy}px`; }
       };
       const up = () => { d.removeEventListener('mousemove', mv); d.removeEventListener('mouseup', up); snap(); };
@@ -387,10 +412,11 @@ export function createEditor({ frame, bar, getState, notify }) {
 
   return {
     isOn: () => on,
-    enable() {
+    enable(o) {
       on = true;
       undo = []; redo = []; sel = null; sheet = null; lastRange = null;
       fonts.clear();
+      (o?.fonts || []).forEach((f) => fonts.add(f));
       wire();
       bar.hidden = false;
       bar.querySelector('[data-c=zoom]').value = String(zoom);
@@ -416,6 +442,6 @@ export function createEditor({ frame, bar, getState, notify }) {
       syncBar();
     },
     usedFonts: () => [...fonts],
-    exportBody: () => cleanClone(true).innerHTML,
+    exportBody: (o) => cleanClone(true, o?.keepMeta).innerHTML,
   };
 }

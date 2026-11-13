@@ -40,7 +40,7 @@ export function docShell({ bodyHtml, o, preview }) {
     .cellb{border:1.2px solid var(--ink)}
     .flush{padding:0 !important}
     .ed-obj{position:absolute;box-sizing:border-box}
-    ${preview ? 'body{zoom:.62;padding:14px 0}' : ''}
+    ${preview ? `body{zoom:${o.zoom || 0.62};padding:14px 0}` : ''}
     body{font-family:'${o.body}',sans-serif;color:${p.ink}}
     .sheet{width:${W};height:${H};padding:.55in;position:relative;overflow:hidden;background:${p.bg};
       break-after:page;page-break-after:always;${preview ? 'margin:0 auto 18px;box-shadow:0 2px 14px #0003' : ''}}
@@ -57,15 +57,17 @@ export function docShell({ bodyHtml, o, preview }) {
   return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(o.title || 'Printable')}</title>
     <link rel="stylesheet" href="${gfont(fonts)}"><style>${css}</style></head><body>${bodyHtml}</body></html>`;
 }
-export function sheetDoc({ pages, o, preview }) {
+export function pagesToBody(pages, o) {
   const foot = [o.shop && `© ${esc(o.shop)}`, o.license && esc(o.license)].filter(Boolean).join(' · ');
-  const body = pages
+  return pages
     .map((pg) => {
       const q = typeof pg === 'string' ? { html: pg } : pg;
       return `<section class="sheet ${q.flush ? 'flush' : ''}">${q.html}${foot && !q.flush ? `<div class="foot">${foot}</div>` : ''}</section>`;
     })
     .join('');
-  return docShell({ bodyHtml: body, o, preview });
+}
+export function sheetDoc({ pages, o, preview }) {
+  return docShell({ bodyHtml: pagesToBody(pages, o), o, preview });
 }
 export const PREVIEW_ZOOM = 0.62;
 export const chunk = (arr, n) => Array.from({ length: Math.ceil(arr.length / n) }, (_, i) => arr.slice(i * n, i * n + n));

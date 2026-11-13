@@ -4,6 +4,7 @@ import {
 } from '../ui.js';
 import { icons } from '../icons.js';
 import { seoSection } from '../seo-tiles.js';
+import { matchProduct } from './studio.js';
 import { EtsyPolicy } from '../builder/policy.js';
 
 // AI risk is our own editorial judgement of how exposed a niche is under Etsy's Creativity Standards
@@ -176,6 +177,7 @@ function renderResults(out, data, ctx) {
         <span class="spacer"></span>
         <button class="btn secondary sm" data-act="save">${saved ? '★ Saved' : '☆ Save keyword'}</button>
         <a class="btn secondary sm" href="#/ideas?q=${encodeURIComponent(q)}">${icons.bulb} Keyword ideas</a>
+        ${matchProduct(q) ? `<a class="btn sm" href="#/studio?p=${matchProduct(q)}">${icons.brush} Design this</a>` : `<a class="btn secondary sm" href="#/studio">${icons.brush} Design Studio</a>`}
         <a class="btn secondary sm" href="#/builder">${icons.sparkle} Build listing</a>
         <a class="btn secondary sm" href="https://www.etsy.com/search?q=${encodeURIComponent(data.query_used)}" target="_blank" rel="noopener">View on Etsy ↗</a>
       </div>

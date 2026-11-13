@@ -16,6 +16,7 @@ import * as users from './pages/users.js';
 import * as builder from './pages/builder.js';
 import * as policyCheck from './pages/policy-check.js';
 import * as digital from './pages/digital.js';
+import * as studio from './pages/studio.js';
 
 // Who is logged in (the server redirects to /login when nobody is).
 const { user } = await api('/api/auth/me');
@@ -27,6 +28,7 @@ const NAV = [
     group: 'Create',
     items: [
       { path: '/builder', label: 'Listing Builder', icon: 'sparkle', page: builder },
+      { path: '/studio', label: 'Design Studio', icon: 'brush', page: studio },
       { path: '/policy', label: 'Policy Checker', icon: 'shield', page: policyCheck },
     ],
   },

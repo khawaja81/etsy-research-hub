@@ -1,5 +1,8 @@
 import { $, $$, esc, store, toast } from '../ui.js';
 import { icons } from '../icons.js';
+import { PALETTES, FONTS, sheetDoc, chunk, lines, list } from '../studio-core.js';
+import { PLANNERS } from '../studio-planners.js';
+import { WEDDING } from '../studio-wedding.js';
 
 /*
  * Design Studio — builds original, print-ready digital products with fixed layouts.
@@ -7,25 +10,6 @@ import { icons } from '../icons.js';
  * plain preset the seller can edit. Output is a full HTML document → "Print → Save as PDF".
  * Fonts are SIL Open Font License (Google Fonts), which allow commercial use inside a product.
  */
-
-const PALETTES = {
-  sage: { name: 'Sage & Cream', bg: '#fbf9f4', ink: '#2f3a33', accent: '#5f7d68', soft: '#e8efe9' },
-  blush: { name: 'Blush & Plum', bg: '#fff8f7', ink: '#4a2f3a', accent: '#b4566f', soft: '#fbe6ea' },
-  navy: { name: 'Navy & Gold', bg: '#fffdf8', ink: '#1f2a44', accent: '#b8903a', soft: '#f3ecd9' },
-  terracotta: { name: 'Terracotta', bg: '#fff9f4', ink: '#4b2e24', accent: '#c0603c', soft: '#f9e5da' },
-  emerald: { name: 'Emerald & Gold', bg: '#fbfaf3', ink: '#123c33', accent: '#1b7a62', soft: '#e1f0e9' },
-  holiday: { name: 'Holiday Red & Green', bg: '#fffefb', ink: '#2c3b2e', accent: '#b22f3a', soft: '#f6e3e3' },
-  mono: { name: 'Black & White', bg: '#ffffff', ink: '#111111', accent: '#111111', soft: '#f1f1f1' },
-};
-const FONTS = {
-  'Playfair Display': 'Playfair+Display:wght@500;700',
-  Lora: 'Lora:wght@400;600',
-  Poppins: 'Poppins:wght@300;400;600',
-  Montserrat: 'Montserrat:wght@400;600;700',
-  'Dancing Script': 'Dancing+Script:wght@600',
-  Amiri: 'Amiri:wght@400;700',
-};
-const gfont = (names) => `https://fonts.googleapis.com/css2?${[...new Set(names)].map((n) => `family=${FONTS[n]}`).join('&')}&display=swap`;
 
 // ---------- preset texts (plain, original, fully editable) ----------
 const COUPONS = {
@@ -41,40 +25,8 @@ const BINGO = {
   blank: '',
 };
 
-// ---------- shared document builder ----------
-function sheetDoc({ pages, o, preview }) {
-  const p = PALETTES[o.palette] || PALETTES.sage;
-  const letter = o.paper !== 'A4';
-  const W = letter ? '8.5in' : '210mm';
-  const H = letter ? '11in' : '297mm';
-  const foot = [o.shop && `© ${esc(o.shop)}`, o.license && esc(o.license)].filter(Boolean).join(' · ');
-  const css = `
-    @page{size:${letter ? 'letter' : 'A4'};margin:0}
-    *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    html,body{margin:0;background:${preview ? '#e8e6e2' : '#fff'}}
-    ${preview ? 'body{zoom:.62;padding:14px 0}' : ''}
-    body{font-family:'${o.body}',sans-serif;color:${p.ink}}
-    .sheet{width:${W};height:${H};padding:.55in;position:relative;overflow:hidden;background:${p.bg};
-      break-after:page;page-break-after:always;${preview ? 'margin:0 auto 18px;box-shadow:0 2px 14px #0003' : ''}}
-    .sheet:last-child{break-after:auto;page-break-after:auto}
-    .h{font-family:'${o.head}',serif;color:${p.accent};margin:0;font-weight:700}
-    .foot{position:absolute;left:0;right:0;bottom:.25in;text-align:center;font-size:9px;letter-spacing:.04em;color:${p.ink}99}
-    .line{border-bottom:1.2px solid ${p.ink}66;height:.26in}
-    .rule{height:2px;background:${p.accent};width:1.2in;margin:.1in auto}
-    .box{border:1.6px solid ${p.accent};border-radius:6px}
-    .soft{background:${p.soft}}
-    .small{font-size:10px;color:${p.ink}b3}
-  `;
-  const body = pages.map((html) => `<section class="sheet">${html}${foot ? `<div class="foot">${foot}</div>` : ''}</section>`).join('');
-  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(o.title || 'Printable')}</title>
-    <link rel="stylesheet" href="${gfont([o.head, o.body])}"><style>${css}</style></head><body>${body}</body></html>`;
-}
-const chunk = (arr, n) => Array.from({ length: Math.ceil(arr.length / n) }, (_, i) => arr.slice(i * n, i * n + n));
-const lines = (n) => Array.from({ length: n }, () => '<div class="line"></div>').join('');
-const list = (s) => String(s || '').split(/[\n,]+/).map((x) => x.trim()).filter(Boolean);
-
 // ---------- products ----------
-const PRODUCTS = {
+const PARTY = {
   coupon: {
     label: 'Coupon book', emoji: '🎟️', query: 'mothers day coupon book printable', note: 'Mother’s Day, Valentine’s, Father’s Day. 8 coupons per page.',
     fields: [
@@ -244,17 +196,23 @@ const PRODUCTS = {
     },
   },
 };
+for (const p of Object.values(PARTY)) p.group = 'Seasonal & party';
+PARTY.seating.group = 'Wedding';
+const PRODUCTS = { ...PLANNERS, ...WEDDING, ...PARTY };
+const GROUPS = ['Planners', 'Wedding', 'Seasonal & party'];
 
 // Used by other pages to offer "Design this" for a researched keyword.
 export function matchProduct(q) {
   const s = String(q || '').toLowerCase();
-  const rules = [['coupon', /coupon/], ['bingo', /bingo/], ['tags', /gift tag/], ['ramadan', /ramadan|eid/], ['seating', /seating chart/], ['santa', /secret santa/], ['nye', /new year|nye/]];
+  const rules = [['coupon', /coupon/], ['bingo', /bingo/], ['tags', /gift tag/], ['ramadan', /ramadan|eid/], ['seating', /seating chart/], ['santa', /secret santa/], ['nye', /new year|nye/],
+    ['invite', /wedding invit/], ['savedate', /save the date/], ['rsvp', /rsvp/], ['program', /wedding program/], ['tablenum', /table number/], ['place', /place card/], ['thanks', /thank you card/], ['welcome', /welcome sign/], ['timeline', /wedding timeline/], ['checklist', /wedding (planner|checklist)/],
+    ['daily', /daily planner/], ['weekly', /weekly planner/], ['monthly', /monthly (planner|calendar)|calendar printable/], ['habit', /habit/], ['budget', /budget/], ['meal', /meal (plan|planner)/], ['todo', /to.?do/], ['goals', /goal/], ['gratitude', /gratitude|journal/], ['workout', /workout|fitness/], ['cleaning', /cleaning/], ['student', /student|school planner|teacher planner/]];
   return rules.find(([, re]) => re.test(s))?.[0] || null;
 }
 
 // ---------- page ----------
 export async function render(view, ctx) {
-  const key = PRODUCTS[ctx.params.p] ? ctx.params.p : 'coupon';
+  const key = PRODUCTS[ctx.params.p] ? ctx.params.p : 'weekly';
   const prod = PRODUCTS[key];
   const saved = store.get('studio-common', {});
   const state = { palette: saved.palette || 'sage', head: saved.head || 'Playfair Display', body: saved.body || 'Poppins', paper: saved.paper || 'letter', shop: saved.shop || '', license: saved.license ?? 'Personal use only · Not for resale' };
@@ -266,13 +224,15 @@ export async function render(view, ctx) {
       <h1>Design Studio</h1>
       <p>Pick a product, edit the words, choose colors and fonts, then save it as a print-ready PDF. Layouts are built into the app — <b>no AI is used</b>, so the design is yours and fits Etsy’s Creativity Standards (“Designed by” you).</p>
     </div></div>
-    <div class="chips" style="margin-bottom:14px">${Object.entries(PRODUCTS).map(([k, p]) => `<a class="chip ${k === key ? 'accent' : ''}" href="#/studio?p=${k}">${p.emoji} ${esc(p.label)}</a>`).join('')}</div>
+    ${GROUPS.map((g) => `<div class="muted small" style="margin:8px 0 4px;font-weight:600">${g}</div><div class="chips">${Object.entries(PRODUCTS).filter(([, p]) => p.group === g).map(([k, p]) => `<a class="chip ${k === key ? 'accent' : ''}" href="#/studio?p=${k}">${p.emoji} ${esc(p.label)}</a>`).join('')}</div>`).join('')}
     <div class="grid split-wide">
       <div class="card stack" id="st-form">
         <div><h3>${prod.emoji} ${esc(prod.label)}</h3><p class="muted small">${esc(prod.note)}</p></div>
         ${Object.keys(prod.presets).length ? `<label class="field">Start from a preset<select class="input" id="st-preset"><option value="">— choose —</option>${Object.keys(prod.presets).map((k) => `<option>${esc(k)}</option>`).join('')}</select></label>` : ''}
         ${prod.fields.map((f) => f.type === 'textarea'
           ? `<label class="field">${esc(f.label)}<textarea class="input" data-f="${f.id}" rows="${f.rows || 4}">${esc(f.def)}</textarea></label>`
+          : f.type === 'select'
+          ? `<label class="field">${esc(f.label)}<select class="input" data-f="${f.id}">${f.options.map(([val, lab]) => `<option value="${esc(val)}" ${val === String(f.def) ? 'selected' : ''}>${esc(lab)}</option>`).join('')}</select></label>`
           : `<label class="field">${esc(f.label)}<input class="input" data-f="${f.id}" type="${f.type || 'text'}" value="${esc(f.def)}"></label>`).join('')}
         <details class="advanced" open><summary>Style &amp; branding</summary>
           <div class="field-row">

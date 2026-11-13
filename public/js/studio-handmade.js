@@ -22,6 +22,9 @@ const CARE = {
   leather: 'Keep away from prolonged water\nCondition occasionally with leather balm\nLet dry naturally if it gets wet\nStore away from direct heat',
   wood: 'Wipe with a damp cloth, do not soak\nDry immediately after cleaning\nRe-oil now and then with a suitable finish\nKeep out of direct sun and heat',
   soap: 'Keep the soap dry between uses\nUse a draining soap dish\nFor external use only\nStop use if irritation occurs',
+  knife: 'Hand wash and dry immediately\nDo not soak or use a dishwasher\nKeep the blade dry to prevent rust\nStore in a sheath or block\nSharpen with a suitable stone',
+  gloves: 'Air dry away from direct heat\nWipe clean with a damp cloth\nCondition leather occasionally\nDo not machine wash\nStore flat in a cool, dry place',
+  football: 'Inflate to the pressure marked on the ball\nWipe clean with a damp cloth\nDo not leave in a hot car\nStore slightly deflated away from sunlight',
   ceramic: 'Hand washing is recommended\nAvoid sudden temperature changes\nCheck your own glaze guidance before microwave or dishwasher use',
 };
 const WARN = {
@@ -41,7 +44,11 @@ export const HANDMADE = {
       { id: 'detail', label: 'Detail lines (one per line)', type: 'textarea', rows: 3, def: 'Hand-poured in small batches\nSoy wax · Cotton wick' },
       { id: 'pages', label: 'Pages (1–8)', type: 'number', def: 2 },
     ],
-    presets: {},
+    presets: {
+      'Sialkot leather': { line: 'Genuine Leather Goods', tagline: 'Handcrafted in Sialkot, Pakistan', detail: 'Full-grain leather\nHand-stitched' },
+      'Sialkot sports': { line: 'Sports Gear', tagline: 'Made in Sialkot, Pakistan', detail: 'Hand-stitched\nQuality checked' },
+      'Sialkot steel': { line: 'Stainless Steel Tools', tagline: 'Crafted in Sialkot, Pakistan', detail: 'Polished finish\nCare card included' },
+    },
     build(v) {
       const tag = () => `<div class="box soft" style="width:2in;height:3.5in;border-radius:10px;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:.5in .15in .2in">
         <div style="position:absolute;top:.17in;left:50%;margin-left:-.09in;width:.18in;height:.18in;border:1.5px solid currentColor;border-radius:50%;background:#fff"></div>
@@ -57,7 +64,7 @@ export const HANDMADE = {
       { id: 'title', label: 'Title', def: 'Care Instructions' }, { id: 'prod', label: 'Product', def: 'Soy Candle' },
       { id: 'items', label: 'Care lines (one per line, up to 6)', type: 'textarea', rows: 6, def: CARE.candle }, { id: 'shop', label: 'Shop name', def: 'Your Shop Name' },
     ],
-    presets: Object.fromEntries([['Candle', 'candle', 'Soy Candle'], ['Knit / crochet', 'knit', 'Knit & Crochet'], ['Jewelry', 'jewelry', 'Handmade Jewelry'], ['Leather', 'leather', 'Leather Goods'], ['Wood', 'wood', 'Wooden Goods'], ['Soap', 'soap', 'Handmade Soap'], ['Ceramic', 'ceramic', 'Ceramics']].map(([n, k, p]) => [n, { prod: p, items: CARE[k] }])),
+    presets: Object.fromEntries([['Candle', 'candle', 'Soy Candle'], ['Knit / crochet', 'knit', 'Knit & Crochet'], ['Jewelry', 'jewelry', 'Handmade Jewelry'], ['Leather', 'leather', 'Leather Goods'], ['Wood', 'wood', 'Wooden Goods'], ['Soap', 'soap', 'Handmade Soap'], ['Ceramic', 'ceramic', 'Ceramics'], ['Knife / steel', 'knife', 'Knives & Steel'], ['Sports gloves', 'gloves', 'Sports Gloves'], ['Football', 'football', 'Footballs']].map(([n, k, p]) => [n, { prod: p, items: CARE[k] }])),
     build(v) {
       const card = () => `<div class="box" style="width:3.5in;height:2in;padding:.12in .18in;display:flex;flex-direction:column;border-radius:6px;overflow:hidden">
         <div style="display:flex;justify-content:space-between;align-items:baseline"><span class="h" style="font-size:15px">${esc(v.title)}</span><span class="small">${esc(v.prod)}</span></div><div class="rule" style="margin:.05in 0 .06in;width:100%"></div>
@@ -166,6 +173,41 @@ export const HANDMADE = {
     build(v) {
       const c = '<div style="text-align:center"><span class="chk"></span></div>';
       return Array.from({ length: num(v.pages, 2, 1, 4) }, () => col(head(v.title) + `<div style="flex:1">${table(['Order #', 'Date', 'Customer', 'Item', 'Due', 'Made', 'Shipped', 'Tracking'], Array.from({ length: 20 }, () => ['', '', '', '', '', c, c, '']), { rowH: '.4in', widths: ['10%', '9%', '16%', '19%', '9%', '8%', '9%', '20%'], fs: 9 })}</div>`));
+    },
+  },
+
+  origin: {
+    group: GROUP, label: 'Made in Sialkot labels', emoji: '🇵🇰', query: 'made in pakistan label', note: 'Origin stickers for packaging. Use only if the item is really made there.',
+    fields: [
+      { id: 'l1', label: 'Small line above', def: 'Handcrafted in' }, { id: 'place', label: 'Place', def: 'Sialkot, Pakistan' },
+      { id: 'l2', label: 'Line below', def: 'Made with pride by skilled artisans' }, { id: 'shop', label: 'Shop name', def: 'Your Shop Name' },
+      sel('shape', 'Shape', [['round', 'Round 2 in (12 per page)'], ['rect', 'Rectangle 3.4×1.2 in (16 per page)']], 'round'),
+    ],
+    presets: {},
+    build(v) {
+      if (v.shape === 'rect') {
+        const r = () => `<div class="box soft" style="width:3.4in;height:1.2in;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;border-radius:8px"><div class="small" style="letter-spacing:.2em;text-transform:uppercase;font-size:8px">${esc(v.l1)}</div><div class="h" style="font-size:21px;line-height:1.1">${esc(v.place)}</div><div style="font-size:8.5px">${esc(v.l2)}</div><div class="small" style="font-size:8px;margin-top:2px">${esc(v.shop)}</div></div>`;
+        return [{ flush: true, html: `<div style="width:7.2in;margin:.5in auto 0;display:grid;grid-template-columns:3.4in 3.4in;gap:.1in .25in;justify-content:center">${Array.from({ length: 16 }, r).join('')}</div>` }];
+      }
+      const c = () => `<div class="box soft" style="width:2in;height:2in;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:.15in"><div class="small" style="letter-spacing:.18em;text-transform:uppercase;font-size:7px">${esc(v.l1)}</div><div class="h" style="font-size:19px;line-height:1.1;margin:2px 0">${esc(v.place)}</div><div style="font-size:7.5px;line-height:1.25">${esc(v.l2)}</div><div class="small" style="font-size:7px;margin-top:3px">${esc(v.shop)}</div></div>`;
+      return [{ flush: true, html: `<div style="width:8.5in;margin:.4in auto 0;display:grid;grid-template-columns:repeat(3,2in);gap:.3in .6in;justify-content:center">${Array.from({ length: 12 }, c).join('')}</div>` }];
+    },
+  },
+
+  warranty: {
+    group: GROUP, label: 'Warranty & authenticity card', emoji: '🛡️', query: 'certificate of authenticity card printable', note: '3.5×2 in cards, 10 per page. Only promise what you will honor.',
+    fields: [
+      { id: 'title', label: 'Title', def: 'Certificate of Authenticity' }, { id: 'product', label: 'Product line', def: 'Handmade Leather Goods' },
+      { id: 'made', label: 'Made in line', def: 'Handcrafted in Sialkot, Pakistan' }, { id: 'material', label: 'Material line', def: 'Genuine leather · Hand-stitched' },
+      { id: 'warranty', label: 'Warranty line (edit to what you really offer)', def: '6-month workmanship guarantee' }, { id: 'shop', label: 'Shop name', def: 'Your Shop Name' },
+    ],
+    presets: {},
+    build(v) {
+      const c = () => `<div class="box" style="width:3.5in;height:2in;padding:.12in .18in;display:flex;flex-direction:column;border-radius:6px;overflow:hidden;border-style:double;border-width:4px">
+        <div class="h" style="font-size:15px;text-align:center">${esc(v.title)}</div><div class="rule" style="margin:.04in auto .06in"></div>
+        <div style="text-align:center;font-size:10px;line-height:1.5"><b>${esc(v.product)}</b><br>${esc(v.made)}<br>${esc(v.material)}<br>${esc(v.warranty)}</div>
+        <div style="margin-top:auto;display:flex;justify-content:space-between;align-items:end;font-size:8.5px"><span>No. ${blank('.6in')}</span><span>${esc(v.shop)}</span></div></div>`;
+      return [{ flush: true, html: `<div style="width:7in;margin:.5in auto 0;display:grid;grid-template-columns:3.5in 3.5in">${Array.from({ length: 10 }, c).join('')}</div>` }];
     },
   },
 };

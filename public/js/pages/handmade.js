@@ -7,6 +7,54 @@ import { seoSection } from '../seo-tiles.js';
 
 // Compliance risk = how much extra labeling / safety / regulation the product usually brings.
 // It is our own editorial guidance — rules differ by country, so always check yours. Not legal advice.
+// Sialkot (Pakistan) is known for leather goods, sports goods, grooming tools & cutlery, and badges — shown first.
+const SIALKOT = [
+  { group: '🇵🇰 Sialkot — leather goods', sialkot: true, items: [
+    ['Personalized leather wallets', 'personalized leather wallet men', 'low', 'Sialkot’s core craft. State the leather type honestly (full-grain, top-grain, genuine).'],
+    ['Leather keychains', 'leather keychain personalized', 'low', 'Small, fast, low shipping cost — a good first product.'],
+    ['Leather journal covers', 'leather journal cover personalized', 'low', 'Refillable covers sell well as gifts; show real stitching and dimensions.'],
+    ['Leather belts', 'handmade leather belt', 'low', 'Offer a clear size chart; made-to-order sizing reduces returns.'],
+    ['Leather tote & bags', 'handmade leather tote bag', 'low', 'Higher price point; photos of the real bag matter most.'],
+    ['Leather gloves', 'leather gloves women handmade', 'low', 'Sialkot is known for gloves. Give a glove size chart and lining details.'],
+    ['Leather jackets', 'handmade leather jacket', 'medium', 'Sizing and returns are the risk. Offer custom measurements; state leather type.'],
+    ['Leather dog collars & horse tack', 'leather dog collar handmade', 'low', 'Show hardware material and strength honestly; no safety claims you cannot prove.'],
+  ] },
+  { group: '🇵🇰 Sialkot — sports goods', sialkot: true, items: [
+    ['Custom footballs / soccer balls', 'custom soccer ball', 'medium', 'Never write FIFA, World Cup or club names. Say “size 5, hand-stitched” only if true.'],
+    ['Boxing & MMA gloves', 'custom boxing gloves', 'medium', 'No brand names. Don’t claim injury protection or certification you don’t hold.'],
+    ['Goalkeeper gloves', 'goalkeeper gloves', 'medium', 'No brand or club marks; give a size chart.'],
+    ['Martial arts uniforms', 'karate gi custom', 'low', 'Give height/weight sizing and fabric weight.'],
+    ['Cricket bats & gear', 'handmade cricket bat', 'medium', '“English willow” or “Kashmir willow” must be true. No IPL/team logos.'],
+    ['Baseball gloves', 'handmade baseball glove', 'medium', 'State leather grade and break-in notes; no MLB or brand marks.'],
+    ['Team sportswear', 'custom team jersey', 'high', 'Team logos and club names are trademarks — original designs only.'],
+  ] },
+  { group: '🇵🇰 Sialkot — grooming tools & cutlery', sialkot: true, items: [
+    ['Manicure & pedicure sets', 'stainless steel manicure set', 'medium', 'Don’t say “surgical” or “medical grade”; state the steel type if you know it.'],
+    ['Tweezers', 'stainless steel tweezers', 'low', 'Show tip type and finish; no medical claims.'],
+    ['Hair-cutting scissors', 'hair cutting scissors', 'medium', 'Say the steel grade only if you can prove it; give size in inches.'],
+    ['Beard & grooming kits', 'beard grooming kit', 'medium', 'If oils or balms are included, cosmetic labeling rules apply.'],
+    ['Kitchen knives', 'handmade kitchen knife', 'high', 'Blades have extra rules on Etsy and with shipping carriers. Check them first.'],
+    ['Damascus steel items', 'damascus steel knife', 'high', '“Damascus” must be real pattern-welded steel. Blade restrictions apply.'],
+    ['Cutlery sets', 'stainless steel cutlery set', 'low', 'State the steel type honestly and say what is in the set.'],
+    ['Hunting & pocket knives', 'handmade hunting knife', 'high', 'Switchblades and gravity knives are prohibited; carriers limit blades. Check Etsy’s weapons policy.'],
+  ] },
+  { group: '🇵🇰 Sialkot — badges, patches & covers', sialkot: true, items: [
+    ['Embroidered patches', 'custom embroidered patch', 'medium', 'Original designs only — no logos, characters or brands.'],
+    ['Bullion wire badges', 'bullion wire patch', 'medium', 'Great craft story; no regimental or club marks you don’t own.'],
+    ['Leather Quran covers', 'leather quran cover handmade', 'low', 'Show real material and stitching; a respectful niche that fits Ramadan and Eid.'],
+  ] },
+];
+
+const SIALKOT_TIPS = [
+  ['Say who really makes it', 'If your own workshop or staff make it, it is “made by you / a member of your shop”. If an outside factory makes YOUR design, choose “designed by you” and add that factory as a production partner (name and location). Reselling a factory’s catalog items you did not design is not allowed.'],
+  ['Show your origin proudly — and truthfully', '“Handcrafted in Sialkot, Pakistan” is a real selling point. Many destination countries also expect a country-of-origin marking on goods — check the rules for the countries you ship to.'],
+  ['Material and quality claims must be true', 'State leather type (full-grain, top-grain, genuine), steel type, “Damascus”, “English willow” only if accurate. Don’t say “surgical” or “medical grade”.'],
+  ['No brand, team or event names', 'Never use FIFA, World Cup, club, league or brand names on balls, gloves, jerseys or gear — they are trademarks and cause takedowns.'],
+  ['Knives and blades are restricted', 'Etsy and shipping carriers limit some blades (switchblades and gravity knives are prohibited). Read Etsy’s Prohibited Items policy and your carrier’s rules before listing any blade.'],
+  ['Plan international shipping', 'Choose a carrier that works from Pakistan, price duties and delivery times honestly, and offer tracking. Check Etsy Help for payout and payment options available for sellers in your country.'],
+  ['Photos of the real product', 'Use photos of your actual items and workshop. Don’t use AI-generated product images that look different from what ships.'],
+];
+
 const NICHES = [
   { group: 'Jewelry', items: [
     ['Polymer clay earrings', 'polymer clay earrings', 'low', 'Use nickel-free hooks. No “healing” or medical claims.'],
@@ -88,7 +136,7 @@ export async function render(view, ctx) {
 
   const out = $('#hm-out', view);
   if (!p.q) {
-    out.innerHTML = nichePicker() + rulesCard();
+    out.innerHTML = nichePicker() + sialkotCard() + rulesCard();
     return;
   }
   out.innerHTML = loading(`Analyzing handmade listings for “${p.q}”…`);
@@ -103,9 +151,17 @@ export async function render(view, ctx) {
   }
 }
 
+function sialkotCard() {
+  return `<div class="card" style="margin-top:6px;border-color:var(--accent)">
+    <div class="card-head"><div><h3>🇵🇰 Selling Sialkot-made products on Etsy</h3><p>How to list them honestly and avoid problems</p></div></div>
+    <ol class="stack" style="gap:10px;padding-left:20px;margin:0">${SIALKOT_TIPS.map(([t, d]) => `<li><b>${esc(t)}.</b> <span class="muted">${esc(d)}</span></li>`).join('')}</ol>
+    <div class="row" style="margin-top:14px"><a class="btn secondary sm" href="#/studio?p=origin">Make “Made in Sialkot” labels</a><a class="btn secondary sm" href="#/studio?p=warranty">Warranty &amp; authenticity card</a><a class="btn secondary sm" href="#/pricing">Price it</a></div></div>`;
+}
+
 function nichePicker() {
-  return `<div class="section-title"><h2>Pick a handmade niche to analyze</h2></div>
-    ${NICHES.map((g) => `<div class="card" style="margin-bottom:14px"><div class="card-head"><h3>${esc(g.group)}</h3></div>
+  return `<div class="notice accent"><div class="icon">🇵🇰</div><div><h3>Sialkot specialties are shown first</h3><p>Leather goods, sports goods, grooming tools and badges — the crafts Sialkot is known for. Pick one to see live Etsy competition, prices and tags.</p></div></div>
+    <div class="section-title"><h2>Pick a handmade niche to analyze</h2></div>
+    ${[...SIALKOT, ...NICHES].map((g) => `<div class="card" style="margin-bottom:14px"><div class="card-head"><h3>${esc(g.group)}</h3></div>
       <div class="stack" style="gap:10px">${g.items.map(([name, seed, risk, note]) => `<div class="row" style="gap:12px;align-items:flex-start">
         <div style="min-width:0;flex:1"><a href="#/handmade?q=${encodeURIComponent(seed)}"><b>${esc(name)}</b></a><div class="muted small">${esc(note)}</div></div>${riskBadge(risk)}</div>`).join('')}</div></div>`).join('')}
     <p class="muted small">Compliance labels are our own guidance, not an Etsy rating or legal advice. Rules differ by country — check labeling and safety requirements where you sell.</p>`;
@@ -122,9 +178,9 @@ function rulesCard(extra = '') {
 
 function nicheFor(q) {
   const s = q.toLowerCase();
-  for (const g of NICHES) for (const [name, seed, risk, note] of g.items) {
+  for (const g of [...SIALKOT, ...NICHES]) for (const [name, seed, risk, note] of g.items) {
     const words = seed.split(' ').filter((w) => w.length > 3 && w !== 'handmade');
-    if (words.length && words.filter((w) => s.includes(w)).length >= Math.min(2, words.length)) return { name, risk, note };
+    if (words.length && words.filter((w) => s.includes(w)).length >= Math.min(2, words.length)) return { name, risk, note, sialkot: Boolean(g.sialkot) };
   }
   return null;
 }
@@ -197,6 +253,7 @@ function renderResults(out, data, ctx) {
 
     ${seoSection(data.seo, n)}
 
+    ${niche?.sialkot ? sialkotCard() : ''}
     ${niche ? rulesCard(`<div class="notice ${RISK[niche.risk][1]}" style="margin-bottom:12px"><div class="icon">🧾</div><div><h3>${esc(niche.name)}: ${RISK[niche.risk][0].toLowerCase()}</h3><p>${esc(niche.note)}</p></div></div>`) : rulesCard()}
 
     <div class="grid grid-2">

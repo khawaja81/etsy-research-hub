@@ -54,6 +54,27 @@ const HANDMADE = {
   Christmas: ['personalized christmas ornament', 'crochet christmas stocking', 'handmade christmas candle', 'wooden advent calendar', 'embroidered christmas ornament'],
 };
 
+// 🇵🇰 Sialkot specialties (leather, sports, grooming tools, badges) matched to each event.
+const SIALKOT = {
+  'New Year’s Eve': ['leather planner cover', 'leather notebook cover refillable'],
+  'Lunar New Year': ['leather keychain personalized'],
+  'Ramadan begins': ['leather quran cover handmade', 'leather tasbih pouch'],
+  'Valentine’s Day': ['leather couple keychain', 'personalized leather bracelet', 'leather journal personalized', 'manicure set gift'],
+  'Eid al-Fitr': ['leather quran cover handmade', 'personalized leather wallet men', 'leather gloves women handmade'],
+  'Mothering Sunday (UK)': ['leather tote bag handmade', 'manicure pedicure set'],
+  Easter: ['leather bookmark handmade'],
+  'Teacher Appreciation Week': ['leather bookmark personalized', 'leather notebook cover personalized'],
+  'Mother’s Day (US)': ['leather tote bag handmade', 'manicure pedicure set', 'leather jewelry roll'],
+  'Graduation season': ['leather portfolio personalized', 'leather business card holder personalized'],
+  'Wedding season': ['leather groomsmen wallet personalized', 'leather cufflink box', 'leather wedding guest book cover'],
+  'Father’s Day': ['personalized leather wallet men', 'handmade leather belt', 'leather toiletry bag', 'beard grooming kit', 'leather keychain personalized dad'],
+  'Back to School': ['custom soccer ball', 'goalkeeper gloves', 'leather pencil case'],
+  Halloween: ['leather fingerless gloves', 'leather wrist cuff'],
+  'Thanksgiving (US)': ['leather gloves men handmade'],
+  'Black Friday & Cyber Monday': ['leather gift set men', 'personalized leather wallet men'],
+  Christmas: ['personalized leather wallet men', 'leather journal cover personalized', 'leather gloves women handmade', 'leather keychain personalized', 'stainless steel manicure set'],
+};
+
 // Sale potential 0–100: buyer engagement with top listings (favorites) vs how crowded the search is.
 function potential(r) {
   const comp = Math.max(0, Math.min(100, (Math.log10(Math.max(r.count || 1, 1)) - 2) * 25));
@@ -123,6 +144,7 @@ export async function render(view, ctx) {
       list.push({
         name, date, lead, region, keywords, approx,
         handmade: HANDMADE[name] || [],
+        sialkot: SIALKOT[name] || [],
         digital: DIGITAL[name] || keywords.slice(0, 2).map((k) => `${k} printable`),
         listBy: addDays(date, -lead),
       });
@@ -166,6 +188,8 @@ export async function render(view, ctx) {
               <div class="chips" style="margin-top:6px">${e.digital.map((k) => `<a class="chip accent" href="#/digital?q=${encodeURIComponent(k)}">${esc(k)}</a>`).join('')}</div>
               ${e.handmade.length ? `<div class="muted small" style="margin-top:10px"><b>Handmade product ideas</b> (physical, made by you)</div>
               <div class="chips" style="margin-top:6px">${e.handmade.map((k) => `<a class="chip" href="#/handmade?q=${encodeURIComponent(k)}">${esc(k)}</a>`).join('')}</div>` : ''}
+              ${e.sialkot.length ? `<div class="muted small" style="margin-top:10px"><b>🇵🇰 Sialkot-made ideas</b> (leather, sports, grooming tools)</div>
+              <div class="chips" style="margin-top:6px">${e.sialkot.map((k) => `<a class="chip accent" href="#/handmade?q=${encodeURIComponent(k)}">${esc(k)}</a>`).join('')}</div>` : ''}
               <div style="margin-top:8px"><button class="link-btn small" data-score="${esc(e.name)}">Score these ideas →</button><div class="ev-score"></div></div>
             </div>
             <div>${status}</div>
@@ -187,7 +211,7 @@ export async function render(view, ctx) {
   const table = (rows, showEvent) => `<div class="table-wrap"><table class="data"><thead><tr><th>Idea</th><th>Type</th>${showEvent ? '<th>Event</th>' : ''}<th class="num">Listings</th><th>Competition</th><th class="num">Median favs</th><th>Sale potential</th></tr></thead>
     <tbody>${rows
       .map(
-        (r) => `<tr><td><a href="#/${r.type === 'Handmade' ? 'handmade' : 'digital'}?q=${encodeURIComponent(r.q)}">${esc(r.q)}</a></td><td class="muted small">${esc(r.type)}</td>${showEvent ? `<td class="muted small">${esc(r.event)}</td>` : ''}<td class="num">${compact(r.count)}</td><td>${esc(r.competition)}</td><td class="num">${r.median_favorites ?? '—'}</td><td>${potentialBadge(r.potential)}</td></tr>`
+        (r) => `<tr><td><a href="#/${r.type === 'Digital' ? 'digital' : 'handmade'}?q=${encodeURIComponent(r.q)}">${esc(r.q)}</a></td><td class="muted small">${r.type === 'Sialkot' ? '🇵🇰 ' : ''}${esc(r.type)}</td>${showEvent ? `<td class="muted small">${esc(r.event)}</td>` : ''}<td class="num">${compact(r.count)}</td><td>${esc(r.competition)}</td><td class="num">${r.median_favorites ?? '—'}</td><td>${potentialBadge(r.potential)}</td></tr>`
       )
       .join('')}</tbody></table></div>`;
 
@@ -198,7 +222,7 @@ export async function render(view, ctx) {
       const box = btn.parentElement.querySelector('.ev-score');
       box.innerHTML = loading('Scoring…');
       try {
-        const rows = await score([...e.digital.map((q) => ({ q, event: e.name, type: 'Digital' })), ...e.handmade.map((q) => ({ q, event: e.name, type: 'Handmade' }))]);
+        const rows = await score([...e.digital.map((q) => ({ q, event: e.name, type: 'Digital' })), ...e.handmade.map((q) => ({ q, event: e.name, type: 'Handmade' })), ...e.sialkot.map((q) => ({ q, event: e.name, type: 'Sialkot' }))]);
         if (ctx.alive()) box.innerHTML = table(rows, false);
       } catch (err) {
         box.innerHTML = `<p class="muted small">${esc(err.message)}</p>`;
@@ -214,7 +238,7 @@ export async function render(view, ctx) {
       }
       out.innerHTML = loading(`Scoring ideas for ${soon.map((e) => e.name).join(', ')}…`);
       try {
-        const rows = await score(soon.flatMap((e) => [...e.digital.map((q) => ({ q, event: e.name, type: 'Digital' })), ...e.handmade.map((q) => ({ q, event: e.name, type: 'Handmade' }))]));
+        const rows = await score(soon.flatMap((e) => [...e.digital.map((q) => ({ q, event: e.name, type: 'Digital' })), ...e.handmade.map((q) => ({ q, event: e.name, type: 'Handmade' })), ...e.sialkot.map((q) => ({ q, event: e.name, type: 'Sialkot' }))]));
         if (ctx.alive()) out.innerHTML = table(rows.slice(0, 12), true);
       } catch (err) {
         out.innerHTML = `<p class="muted small">${esc(err.message)}</p>`;

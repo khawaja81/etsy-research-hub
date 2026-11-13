@@ -131,7 +131,10 @@ const RESELL_TERMS = [
 // Handmade items must be made by the seller or a shop member — supplier / dropship wording breaks that.
 const DROPSHIP_TERMS = ["dropship", "drop ship", "drop-ship", "dropshipping", "aliexpress", "alibaba", "temu", "ships from supplier", "wholesale supplier", "print on demand", "print-on-demand"];
 // Safety / purity claims that must be true and provable.
-const SAFETY_CLAIMS = ["food safe", "food-safe", "lead free", "lead-free", "non toxic", "non-toxic", "bpa free", "bpa-free", "hypoallergenic", "organic", "100% natural", "chemical free", "chemical-free"];
+const SAFETY_CLAIMS = ["surgical steel", "surgical grade", "surgical-grade", "surgical stainless steel", "food safe", "food-safe", "lead free", "lead-free", "non toxic", "non-toxic", "bpa free", "bpa-free", "hypoallergenic", "organic", "100% natural", "chemical free", "chemical-free"];
+// Blades carry extra rules on Etsy and with carriers; factory wording may mean the item is not "made by you".
+const WEAPON_CAUTION = ["dagger", "machete", "sword", "hunting knife", "throwing knife", "combat knife", "tactical knife", "survival knife", "bowie knife", "pocket knife"];
+const FACTORY_TERMS = ["factory", "manufactured by", "manufacturer", "oem", "bulk order", "mass produced", "mass-produced"];
 const COMMERCIAL_TERMS = ["commercial use", "commercial license", "commercial licence", "small business license", "small business licence"];
 
 export const AI_RULES = [
@@ -205,6 +208,11 @@ function contentChecks(text, field, ctx) {
   if (ctx && ctx.itemType === "handmade")
     for (const t of findTerms(text, DROPSHIP_TERMS))
       out.push(issue("error", field, `"${t}" doesn't fit a handmade listing. Etsy "handmade" means you or a member of your shop made the item. Choose the right item type or disclose your production partner.`, { type: "remove", term: t }));
+  for (const t of findTerms(text, WEAPON_CAUTION))
+    out.push(issue("warn", field, `"${t}" — knives and blades have extra restrictions on Etsy and with shipping carriers (switchblades, gravity knives and similar are prohibited). Read Etsy's Prohibited Items policy and your carrier's rules before listing.`));
+  if (ctx && ctx.itemType === "handmade")
+    for (const t of findTerms(text, FACTORY_TERMS))
+      out.push(issue("warn", field, `"${t}" suggests another business makes this. If an outside workshop or factory produces your design, set the item as "designed by you" and add them as a production partner — don't describe it as made by your own hands.`));
   for (const t of findTerms(text, RESELL_TERMS))
     out.push(issue("error", field, `"${t}" — reselling or giving resale rights to other people's digital content is not allowed. Only list designs you created and own.`, { type: "remove", term: t }));
 

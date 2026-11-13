@@ -47,7 +47,7 @@ const caps = (t) => `<div style="letter-spacing:.22em;text-transform:uppercase;f
 // Lays copies of one card onto sheets: 4 per sheet for A2, 1 per sheet (with trim marks) for 5x7.
 function cards(v, inner, count = 1) {
   const S = LS[v.size] || LS.a2;
-  const card = (html) => `<div style="width:${S.w}in;height:${S.h}in;position:relative;overflow:hidden;background:var(--bg);font-size:${S.fs}px;color:var(--ink)">${frame(v.style, html)}</div>`;
+  const card = (html) => `<div class="st-card" style="width:${S.w}in;height:${S.h}in;position:relative;overflow:hidden;background:var(--bg);font-size:${S.fs}px;color:var(--ink)">${frame(v.style, html)}</div>`;
   if (v.size === '5x7') {
     const marks = '<div style="position:absolute;left:0;right:0;top:50%;border-top:1px dashed #bbb;opacity:.0"></div>';
     return Array.from({ length: count }, () => ({

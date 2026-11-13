@@ -1,6 +1,7 @@
 import { $, $$, esc, store, toast } from '../ui.js';
 import { icons } from '../icons.js';
-import { PALETTES, FONTS, sheetDoc, chunk, lines, list } from '../studio-core.js';
+import { PALETTES, FONTS, sheetDoc, docShell, chunk, lines, list } from '../studio-core.js';
+import { createEditor } from '../studio-editor.js';
 import { PLANNERS } from '../studio-planners.js';
 import { WEDDING } from '../studio-wedding.js';
 
@@ -228,12 +229,14 @@ export async function render(view, ctx) {
     <div class="grid split-wide">
       <div class="card stack" id="st-form">
         <div><h3>${prod.emoji} ${esc(prod.label)}</h3><p class="muted small">${esc(prod.note)}</p></div>
+<div id="st-fields" class="stack">
         ${Object.keys(prod.presets).length ? `<label class="field">Start from a preset<select class="input" id="st-preset"><option value="">— choose —</option>${Object.keys(prod.presets).map((k) => `<option>${esc(k)}</option>`).join('')}</select></label>` : ''}
         ${prod.fields.map((f) => f.type === 'textarea'
           ? `<label class="field">${esc(f.label)}<textarea class="input" data-f="${f.id}" rows="${f.rows || 4}">${esc(f.def)}</textarea></label>`
           : f.type === 'select'
           ? `<label class="field">${esc(f.label)}<select class="input" data-f="${f.id}">${f.options.map(([val, lab]) => `<option value="${esc(val)}" ${val === String(f.def) ? 'selected' : ''}>${esc(lab)}</option>`).join('')}</select></label>`
           : `<label class="field">${esc(f.label)}<input class="input" data-f="${f.id}" type="${f.type || 'text'}" value="${esc(f.def)}"></label>`).join('')}
+        </div>
         <details class="advanced" open><summary>Style &amp; branding</summary>
           <div class="field-row">
             <label class="field">Colors<select class="input" data-s="palette">${opt(PALETTES, state.palette)}</select></label>
@@ -249,7 +252,9 @@ export async function render(view, ctx) {
           <a class="btn secondary" href="#/builder">Write the listing</a></div>
         <p class="muted small">In the print window choose <b>Save as PDF</b>, the matching paper size, margins <b>None</b>, and tick <b>Background graphics</b>. Make a Letter and an A4 version and include both (Etsy allows 5 files, 20&nbsp;MB each).</p>
       </div>
-      <div class="card"><div class="card-head"><div><h3>Preview</h3><p>Updates as you type</p></div></div>
+      <div class="card"><div class="card-head"><div><h3>Preview</h3><p id="st-hint">Updates as you type</p></div>
+          <button class="btn" id="st-edit">✏️ Customize like Canva</button></div>
+        <div id="ed-bar" hidden style="margin-bottom:8px"></div>
         <iframe id="st-prev" title="Preview" style="width:100%;height:70vh;border:1px solid var(--border);border-radius:10px;background:#e8e6e2"></iframe></div>
     </div>
     <div class="card" style="margin-top:16px"><h3>${icons.shield} Before you list</h3><ul style="margin:6px 0 0;padding-left:18px" class="small">
@@ -261,19 +266,24 @@ export async function render(view, ctx) {
 
   const frame = $('#st-prev', view);
   const opts = () => ({ ...state, title: vals.title || prod.label });
+  let editing = false;
+  const ed = createEditor({ frame, bar: $('#ed-bar', view), getState: () => state, notify: toast });
+  const build = () => {
+    try { return sheetDoc({ pages: prod.build(vals), o: opts(), preview: true }); } catch (e) { return `<p style="font:14px sans-serif;padding:20px">${esc(e.message)}</p>`; }
+  };
   let t;
   const draw = () => {
+    if (editing) return;
     clearTimeout(t);
-    t = setTimeout(() => {
-      try { frame.srcdoc = sheetDoc({ pages: prod.build(vals), o: opts(), preview: true }); } catch (e) { frame.srcdoc = `<p style="font:14px sans-serif;padding:20px">${esc(e.message)}</p>`; }
-    }, 120);
+    t = setTimeout(() => { frame.srcdoc = build(); }, 120);
   };
 
   view.oninput = (e) => {
     const f = e.target.dataset?.f;
     const s = e.target.dataset?.s;
-    if (f) vals[f] = e.target.value;
     if (s) { state[s] = e.target.value; store.set('studio-common', state); }
+    if (editing) { if (s) ed.applyTheme(state); return; }
+    if (f) vals[f] = e.target.value;
     if (f || s) draw();
   };
   const preset = $('#st-preset', view);
@@ -284,11 +294,39 @@ export async function render(view, ctx) {
     $$('[data-f]', view).forEach((el) => { if (p[el.dataset.f] !== undefined) el.value = p[el.dataset.f]; });
     draw();
   });
+  // Customize mode: the preview becomes a Canva-style editor and the content fields are locked.
+  const split = $('.split-wide', view);
+  const setEditing = (on) => {
+    editing = on;
+    $('#st-fields', view).style.display = on ? 'none' : '';
+    $('#st-edit', view).textContent = on ? '↩ Back to form (discards edits)' : '✏️ Customize like Canva';
+    $('#st-edit', view).classList.toggle('secondary', on);
+    $('#st-hint', view).textContent = on ? 'Click text to type · click an element to restyle it' : 'Updates as you type';
+    split.style.gridTemplateColumns = on ? 'minmax(0,1fr)' : '';
+    frame.style.height = on ? '78vh' : '70vh';
+  };
+  $('#st-edit', view).addEventListener('click', () => {
+    if (editing) {
+      if (!confirm('Go back to the form? Your manual edits will be discarded.')) return;
+      ed.disable();
+      setEditing(false);
+      frame.srcdoc = build();
+      return;
+    }
+    clearTimeout(t);
+    setEditing(true);
+    frame.addEventListener('load', () => { ed.enable(); ed.applyTheme(state); }, { once: true });
+    frame.srcdoc = build();
+  });
+
   $('#st-print', view).addEventListener('click', () => {
     const w = window.open('', '_blank');
     if (!w) { toast('Allow pop-ups for this site, then try again'); return; }
+    const html = editing
+      ? docShell({ bodyHtml: ed.exportBody(), o: { ...opts(), extraFonts: ed.usedFonts() }, preview: false })
+      : sheetDoc({ pages: prod.build(vals), o: opts(), preview: false });
     w.document.open();
-    w.document.write(sheetDoc({ pages: prod.build(vals), o: opts(), preview: false }));
+    w.document.write(html);
     w.document.close();
     const go = () => setTimeout(() => w.print(), 400);
     (w.document.fonts?.ready || Promise.resolve()).then(go, go);

@@ -23,12 +23,12 @@ export const FONTS = {
 export const gfont = (names) => `https://fonts.googleapis.com/css2?${[...new Set(names)].map((n) => `family=${FONTS[n]}`).join('&')}&display=swap`;
 
 // ---------- shared document builder ----------
-export function sheetDoc({ pages, o, preview }) {
+// Wraps already-built <section class="sheet"> markup in the full print/preview document.
+export function docShell({ bodyHtml, o, preview }) {
   const p = PALETTES[o.palette] || PALETTES.sage;
   const letter = o.paper !== 'A4';
   const W = letter ? '8.5in' : '210mm';
   const H = letter ? '11in' : '297mm';
-  const foot = [o.shop && `© ${esc(o.shop)}`, o.license && esc(o.license)].filter(Boolean).join(' · ');
   const css = `
     @page{size:${letter ? 'letter' : 'A4'};margin:0}
     *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -39,6 +39,7 @@ export function sheetDoc({ pages, o, preview }) {
     .circ{display:inline-block;width:.2in;height:.2in;border:1.3px solid var(--ink);border-radius:50%}
     .cellb{border:1.2px solid var(--ink)}
     .flush{padding:0 !important}
+    .ed-obj{position:absolute;box-sizing:border-box}
     ${preview ? 'body{zoom:.62;padding:14px 0}' : ''}
     body{font-family:'${o.body}',sans-serif;color:${p.ink}}
     .sheet{width:${W};height:${H};padding:.55in;position:relative;overflow:hidden;background:${p.bg};
@@ -52,15 +53,21 @@ export function sheetDoc({ pages, o, preview }) {
     .soft{background:${p.soft}}
     .small{font-size:10px;color:${p.ink}b3}
   `;
+  const fonts = [o.head, o.body, ...(o.extraFonts || [])].filter((f) => FONTS[f]);
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(o.title || 'Printable')}</title>
+    <link rel="stylesheet" href="${gfont(fonts)}"><style>${css}</style></head><body>${bodyHtml}</body></html>`;
+}
+export function sheetDoc({ pages, o, preview }) {
+  const foot = [o.shop && `© ${esc(o.shop)}`, o.license && esc(o.license)].filter(Boolean).join(' · ');
   const body = pages
     .map((pg) => {
       const q = typeof pg === 'string' ? { html: pg } : pg;
       return `<section class="sheet ${q.flush ? 'flush' : ''}">${q.html}${foot && !q.flush ? `<div class="foot">${foot}</div>` : ''}</section>`;
     })
     .join('');
-  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(o.title || 'Printable')}</title>
-    <link rel="stylesheet" href="${gfont([o.head, o.body])}"><style>${css}</style></head><body>${body}</body></html>`;
+  return docShell({ bodyHtml: body, o, preview });
 }
+export const PREVIEW_ZOOM = 0.62;
 export const chunk = (arr, n) => Array.from({ length: Math.ceil(arr.length / n) }, (_, i) => arr.slice(i * n, i * n + n));
 export const lines = (n) => Array.from({ length: n }, () => '<div class="line"></div>').join('');
 export const list = (s) => String(s || '').split(/[\n,]+/).map((x) => x.trim()).filter(Boolean);

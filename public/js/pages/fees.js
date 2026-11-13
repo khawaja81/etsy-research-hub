@@ -1,6 +1,6 @@
 import { $, esc, fmt, barList, store } from '../ui.js';
 
-const PRESETS = {
+export const PRESETS = {
   us: { label: 'United States', pct: 3, fixed: 0.25, reg: 0 },
   ca: { label: 'Canada', pct: 3, fixed: 0.25, reg: 0 },
   uk: { label: 'United Kingdom', pct: 4, fixed: 0.2, reg: 0.32 },
@@ -47,7 +47,7 @@ export function calc(v) {
 }
 
 // Finds the item price that reaches a target margin (binary search — fees are not all linear).
-function solvePrice(v, targetMargin) {
+export function solvePrice(v, targetMargin) {
   let lo = 0;
   let hi = 100000;
   for (let i = 0; i < 60; i++) {

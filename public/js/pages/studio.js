@@ -5,6 +5,7 @@ import { createEditor } from '../studio-editor.js';
 import { PLANNERS } from '../studio-planners.js';
 import { WEDDING } from '../studio-wedding.js';
 import { EXTRA } from '../studio-extra.js';
+import { HANDMADE } from '../studio-handmade.js';
 import { LOOKS, loadAll, saveTemplate, deleteTemplate, downloadTemplate, importFile } from '../studio-templates.js';
 
 /*
@@ -201,13 +202,14 @@ const PARTY = {
 };
 for (const p of Object.values(PARTY)) p.group = 'Seasonal & party';
 PARTY.seating.group = 'Wedding';
-const PRODUCTS = { ...PLANNERS, ...WEDDING, ...EXTRA, ...PARTY };
-const GROUPS = ['Planners', 'Wedding', 'Cards & invitations', 'Kids & family', 'Home & business', 'Seasonal & party'];
+const PRODUCTS = { ...PLANNERS, ...WEDDING, ...EXTRA, ...HANDMADE, ...PARTY };
+const GROUPS = ['Planners', 'Wedding', 'Cards & invitations', 'Kids & family', 'Home & business', 'Handmade maker tools', 'Seasonal & party'];
 
 // Used by other pages to offer "Design this" for a researched keyword.
 export function matchProduct(q) {
   const s = String(q || '').toLowerCase();
-  const rules = [['coupon', /coupon/], ['bingo', /bingo/], ['tags', /gift tag/], ['ramadan', /ramadan|eid/], ['seating', /seating chart/], ['santa', /secret santa/], ['nye', /new year|nye/],
+  const rules = [['hangtag', /hang tag/], ['carecard', /care (instruction )?card/], ['earringcard', /earring card|earring display/], ['label', /candle label|soap label|ingredient label|product label|bath bomb label/], ['roundlabel', /round (sticker )?label|sticker label/], ['bizcard', /business card/], ['orderform', /order form|custom order/], ['pricetag', /price tag/], ['inventory', /inventory/], ['ordertracker', /order tracker|production tracker/],
+    ['coupon', /coupon/], ['bingo', /bingo/], ['tags', /gift tag/], ['ramadan', /ramadan|eid/], ['seating', /seating chart/], ['santa', /secret santa/], ['nye', /new year|nye/],
     ['invite', /wedding invit/], ['savedate', /save the date/], ['rsvp', /rsvp/], ['program', /wedding program/], ['tablenum', /table number/], ['place', /place card/], ['thanks', /thank you card/], ['welcome', /welcome sign/], ['timeline', /wedding timeline/], ['checklist', /wedding (planner|checklist)/],
     ['birthday', /birthday invit/], ['baby', /baby shower/], ['certificate', /^certificate|certificate template/], ['recipe', /recipe card/], ['bookmark', /bookmark/], ['orderthanks', /thank you for your order/], ['chores', /chore/], ['reward', /reward chart|star chart/], ['milestone', /milestone/], ['menu', /menu template|menu printable/], ['voucher', /gift certificate|voucher/], ['labels', /pantry label|jar label|label/],
     ['daily', /daily planner/], ['weekly', /weekly planner/], ['monthly', /monthly (planner|calendar)|calendar printable/], ['habit', /habit/], ['budget', /budget/], ['meal', /meal (plan|planner)/], ['todo', /to.?do/], ['goals', /goal/], ['gratitude', /gratitude|journal/], ['workout', /workout|fitness/], ['cleaning', /cleaning/], ['student', /student|school planner|teacher planner/]];

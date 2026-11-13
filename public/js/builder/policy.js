@@ -128,6 +128,10 @@ const RESELL_TERMS = [
   "plr", "private label rights", "master resell rights", "mrr", "resell rights", "resale rights",
   "resell license", "you can resell", "white label", "white-label",
 ];
+// Handmade items must be made by the seller or a shop member — supplier / dropship wording breaks that.
+const DROPSHIP_TERMS = ["dropship", "drop ship", "drop-ship", "dropshipping", "aliexpress", "alibaba", "temu", "ships from supplier", "wholesale supplier", "print on demand", "print-on-demand"];
+// Safety / purity claims that must be true and provable.
+const SAFETY_CLAIMS = ["food safe", "food-safe", "lead free", "lead-free", "non toxic", "non-toxic", "bpa free", "bpa-free", "hypoallergenic", "organic", "100% natural", "chemical free", "chemical-free"];
 const COMMERCIAL_TERMS = ["commercial use", "commercial license", "commercial licence", "small business license", "small business licence"];
 
 export const AI_RULES = [
@@ -196,6 +200,11 @@ function contentChecks(text, field, ctx) {
   for (const t of findTerms(text, ADULT_TERMS))
     out.push(issue("warn", field, `"${t}" — mature content must be marked "mature" and must not appear in titles/thumbnails.`));
 
+  for (const t of findTerms(text, SAFETY_CLAIMS))
+    out.push(issue("warn", field, `"${t}" is a safety/purity claim. Only use it if it is true and you can show proof (tests, certificates, full ingredient list).`));
+  if (ctx && ctx.itemType === "handmade")
+    for (const t of findTerms(text, DROPSHIP_TERMS))
+      out.push(issue("error", field, `"${t}" doesn't fit a handmade listing. Etsy "handmade" means you or a member of your shop made the item. Choose the right item type or disclose your production partner.`, { type: "remove", term: t }));
   for (const t of findTerms(text, RESELL_TERMS))
     out.push(issue("error", field, `"${t}" — reselling or giving resale rights to other people's digital content is not allowed. Only list designs you created and own.`, { type: "remove", term: t }));
 
@@ -320,6 +329,22 @@ function checkDescription(desc, ctx) {
     out.push(issue("error", "description", "You marked the design as AI-assisted. Etsy's Creativity Standards require disclosing AI use in the description.", { type: "addAiDisclosure" }));
   if (ctx && ctx.aiDesign)
     out.push(issue("info", "description", "AI-assisted work: Etsy expects meaningful creative input from you (editing, composition, finishing), no copied styles or IP, and honest mockups. Keep your source files as proof."));
+  if (ctx && ctx.itemType === "handmade") {
+    if (!/\d+(\.\d+)?\s?(in|inch|inches|"|cm|mm|oz|g|ml|lb|lbs|ft)\b|\d+\s?x\s?\d+/i.test(d))
+      out.push(issue("info", "description", "Add the size, dimensions or weight — it is the most common buyer question and reduces returns."));
+    if (!/material|made (of|from|with)|wax|wool|cotton|silver|gold|leather|wood|clay|resin|ceramic|glass|fabric|yarn|steel|brass|copper|stone/i.test(d))
+      out.push(issue("info", "description", "List the real materials (fiber, metal, wood, wax…). Handmade buyers look for this."));
+    if (!/processing|ships? (in|within)|business days|made to order|ready to ship|turnaround|handmade to order/i.test(d))
+      out.push(issue("info", "description", "State your processing time and whether the item is made to order or ready to ship."));
+    if (!/\bcare\b|wash|clean|wipe|dry|store|burn/i.test(d))
+      out.push(issue("info", "description", "Add care instructions — they show quality and prevent damage complaints."));
+    if (/\b(candle|wax melt)s?\b/i.test(d) && !/warning|never leave|unattended|flame|burn(ing)? (within|safely)|safety/i.test(d))
+      out.push(issue("warn", "description", "Candles need safety / burn instructions (e.g. never leave a burning candle unattended). Check the labeling rules for your country."));
+    if (/\b(soap|lotion|balm|scrub|bath bomb|cream|serum|body butter|lip)\b/i.test(d) && !/ingredients?/i.test(d))
+      out.push(issue("warn", "description", "Skin-care and soap products should list their full ingredients. Cosmetic labeling rules apply in most countries."));
+    if (/\b(baby|toddler|infant|kids?|child(ren)?|toys?|teether)\b/i.test(d) && !/age|small parts|safety|choking|tested/i.test(d))
+      out.push(issue("info", "description", "Items for babies and children need age guidance and a safety statement (e.g. small-parts warning). Rules such as CPSIA or EN71 may apply."));
+  }
   if (ctx && ctx.itemType === "digital") {
     if (!/instant download|digital download|digital file|digital product|downloadable|download/i.test(d))
       out.push(issue("warn", "description", `Say clearly that this is an instant digital download.`));

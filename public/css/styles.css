@@ -321,6 +321,7 @@ tr.expand td { background: var(--surface-2); }
 
 /* ---------- feedback ---------- */
 .notice { border-radius: 12px; padding: 14px 16px; border: 1px solid var(--border); background: var(--surface-2); display: flex; gap: 12px; align-items: flex-start; }
+.notice.good { background: var(--good-soft); border-color: transparent; }
 .notice.warn { background: var(--warn-soft); border-color: transparent; }
 .notice.bad { background: var(--critical-soft); border-color: transparent; }
 .notice.accent { background: var(--accent-soft); border-color: transparent; }

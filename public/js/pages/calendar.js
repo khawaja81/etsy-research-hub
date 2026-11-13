@@ -27,6 +27,33 @@ const DIGITAL = {
   Christmas: ['christmas gift tags printable', 'advent calendar printable', 'christmas bingo printable', 'christmas party invitation template', 'santa letter printable'],
 };
 
+// Handmade (physical) product ideas per event — scored live on demand, same as digital ideas.
+const HANDMADE = {
+  'New Year’s Eve': ['personalized 2027 notebook', 'handmade sparkler holder', 'custom new year ornament'],
+  'Lunar New Year': ['handmade red envelope pouch', 'zodiac embroidered keychain', 'lunar new year crochet charm'],
+  'Ramadan begins': ['handmade ramadan lantern', 'ramadan advent calendar wooden', 'handmade prayer beads tasbih'],
+  'Valentine’s Day': ['handmade soap valentine', 'personalized couple keychain', 'crochet heart plush', 'soy candle valentine gift', 'birth flower necklace'],
+  'Eid al-Fitr': ['handmade eid gift box', 'embroidered eid cushion cover', 'custom name bracelet gold'],
+  'Mothering Sunday (UK)': ['personalised mum necklace', 'handmade bath bomb gift set', 'embroidered flower hoop'],
+  'St. Patrick’s Day': ['crochet shamrock', 'handmade clover earrings', 'st patricks day wooden sign'],
+  Easter: ['crochet easter bunny', 'personalized easter basket tag wooden', 'handmade easter egg decor', 'easter bunny amigurumi'],
+  'Earth Day': ['beeswax food wraps', 'handmade plantable seed paper', 'reusable produce bags'],
+  'Teacher Appreciation Week': ['personalized teacher keychain', 'teacher candle gift', 'embroidered teacher tote'],
+  'Mother’s Day (US)': ['personalized mom necklace', 'birth flower necklace', 'handmade bath bomb set', 'custom candle for mom', 'embroidered flower hoop'],
+  'Graduation season': ['personalized graduation keychain', 'graduation cap ornament handmade', 'custom class of 2027 gift'],
+  'Pride Month': ['crochet rainbow heart', 'handmade pride earrings', 'pride flag keychain handmade'],
+  'Wedding season': ['personalized bridesmaid gift', 'handmade wedding candle favors', 'custom wedding ring dish', 'embroidered wedding handkerchief'],
+  'Father’s Day': ['leather keychain personalized dad', 'engraved wooden gift dad', 'handmade beard oil', 'leather wallet handmade'],
+  '4th of July': ['crochet flag decor', 'handmade patriotic earrings', 'wooden stars decor'],
+  'Back to School': ['personalized pencil case', 'handmade teacher gift', 'embroidered backpack tag'],
+  Halloween: ['handmade halloween earrings', 'crochet pumpkin', 'spooky soy candle', 'polymer clay ghost charms'],
+  Diwali: ['handmade diya set', 'handmade diwali candle', 'rangoli wooden stencil'],
+  'Thanksgiving (US)': ['handmade fall candle', 'crochet pumpkin decor', 'wooden thankful sign'],
+  'Black Friday & Cyber Monday': ['soy candle gift set', 'handmade stocking stuffers', 'personalized ornament'],
+  Hanukkah: ['handmade menorah', 'hanukkah ornament handmade', 'dreidel wooden handmade'],
+  Christmas: ['personalized christmas ornament', 'crochet christmas stocking', 'handmade christmas candle', 'wooden advent calendar', 'embroidered christmas ornament'],
+};
+
 // Sale potential 0–100: buyer engagement with top listings (favorites) vs how crowded the search is.
 function potential(r) {
   const comp = Math.max(0, Math.min(100, (Math.log10(Math.max(r.count || 1, 1)) - 2) * 25));
@@ -95,6 +122,7 @@ export async function render(view, ctx) {
       if (!date || date < today || date > horizon) continue;
       list.push({
         name, date, lead, region, keywords, approx,
+        handmade: HANDMADE[name] || [],
         digital: DIGITAL[name] || keywords.slice(0, 2).map((k) => `${k} printable`),
         listBy: addDays(date, -lead),
       });
@@ -136,6 +164,8 @@ export async function render(view, ctx) {
                 <a class="chip accent" href="#/ideas?q=${encodeURIComponent(e.keywords[0])}&expand=modifiers">More ideas →</a></div>
               <div class="muted small" style="margin-top:10px"><b>Digital product ideas</b> (instant delivery, no shipping)</div>
               <div class="chips" style="margin-top:6px">${e.digital.map((k) => `<a class="chip accent" href="#/digital?q=${encodeURIComponent(k)}">${esc(k)}</a>`).join('')}</div>
+              ${e.handmade.length ? `<div class="muted small" style="margin-top:10px"><b>Handmade product ideas</b> (physical, made by you)</div>
+              <div class="chips" style="margin-top:6px">${e.handmade.map((k) => `<a class="chip" href="#/handmade?q=${encodeURIComponent(k)}">${esc(k)}</a>`).join('')}</div>` : ''}
               <div style="margin-top:8px"><button class="link-btn small" data-score="${esc(e.name)}">Score these ideas →</button><div class="ev-score"></div></div>
             </div>
             <div>${status}</div>
@@ -154,10 +184,10 @@ export async function render(view, ctx) {
     });
     return rows.sort((a, b) => b.potential - a.potential);
   }
-  const table = (rows, showEvent) => `<div class="table-wrap"><table class="data"><thead><tr><th>Idea</th>${showEvent ? '<th>Event</th>' : ''}<th class="num">Listings</th><th>Competition</th><th class="num">Median favs</th><th>Sale potential</th></tr></thead>
+  const table = (rows, showEvent) => `<div class="table-wrap"><table class="data"><thead><tr><th>Idea</th><th>Type</th>${showEvent ? '<th>Event</th>' : ''}<th class="num">Listings</th><th>Competition</th><th class="num">Median favs</th><th>Sale potential</th></tr></thead>
     <tbody>${rows
       .map(
-        (r) => `<tr><td><a href="#/digital?q=${encodeURIComponent(r.q)}">${esc(r.q)}</a></td>${showEvent ? `<td class="muted small">${esc(r.event)}</td>` : ''}<td class="num">${compact(r.count)}</td><td>${esc(r.competition)}</td><td class="num">${r.median_favorites ?? '—'}</td><td>${potentialBadge(r.potential)}</td></tr>`
+        (r) => `<tr><td><a href="#/${r.type === 'Handmade' ? 'handmade' : 'digital'}?q=${encodeURIComponent(r.q)}">${esc(r.q)}</a></td><td class="muted small">${esc(r.type)}</td>${showEvent ? `<td class="muted small">${esc(r.event)}</td>` : ''}<td class="num">${compact(r.count)}</td><td>${esc(r.competition)}</td><td class="num">${r.median_favorites ?? '—'}</td><td>${potentialBadge(r.potential)}</td></tr>`
       )
       .join('')}</tbody></table></div>`;
 
@@ -168,7 +198,7 @@ export async function render(view, ctx) {
       const box = btn.parentElement.querySelector('.ev-score');
       box.innerHTML = loading('Scoring…');
       try {
-        const rows = await score(e.digital.map((q) => ({ q, event: e.name })));
+        const rows = await score([...e.digital.map((q) => ({ q, event: e.name, type: 'Digital' })), ...e.handmade.map((q) => ({ q, event: e.name, type: 'Handmade' }))]);
         if (ctx.alive()) box.innerHTML = table(rows, false);
       } catch (err) {
         box.innerHTML = `<p class="muted small">${esc(err.message)}</p>`;
@@ -184,7 +214,7 @@ export async function render(view, ctx) {
       }
       out.innerHTML = loading(`Scoring ideas for ${soon.map((e) => e.name).join(', ')}…`);
       try {
-        const rows = await score(soon.flatMap((e) => e.digital.map((q) => ({ q, event: e.name }))));
+        const rows = await score(soon.flatMap((e) => [...e.digital.map((q) => ({ q, event: e.name, type: 'Digital' })), ...e.handmade.map((q) => ({ q, event: e.name, type: 'Handmade' }))]));
         if (ctx.alive()) out.innerHTML = table(rows.slice(0, 12), true);
       } catch (err) {
         out.innerHTML = `<p class="muted small">${esc(err.message)}</p>`;

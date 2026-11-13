@@ -17,6 +17,8 @@ import * as builder from './pages/builder.js';
 import * as policyCheck from './pages/policy-check.js';
 import * as digital from './pages/digital.js';
 import * as studio from './pages/studio.js';
+import * as handmade from './pages/handmade.js';
+import * as pricing from './pages/pricing.js';
 
 // Who is logged in (the server redirects to /login when nobody is).
 const { user } = await api('/api/auth/me');
@@ -36,6 +38,7 @@ const NAV = [
     group: 'Research',
     items: [
       { path: '/digital', label: 'Digital Products', icon: 'folder', page: digital },
+      { path: '/handmade', label: 'Handmade Products', icon: 'shop', page: handmade },
       { path: '/keyword', label: 'Keyword Research', icon: 'search', page: keyword },
       { path: '/ideas', label: 'Keyword Ideas', icon: 'bulb', page: ideas },
       { path: '/compare', label: 'Compare Keywords', icon: 'compare', page: compare },
@@ -53,6 +56,7 @@ const NAV = [
     items: [
       { path: '/seo', label: 'Title & Tag Grader', icon: 'tag', page: seo },
       { path: '/fees', label: 'Profit Calculator', icon: 'calc', page: fees },
+      { path: '/pricing', label: 'Handmade Pricing', icon: 'calc', page: pricing },
     ],
   },
   {

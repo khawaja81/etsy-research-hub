@@ -3,6 +3,8 @@ import { icons } from '../icons.js';
 
 const FEATURES = [
   ['/builder', 'sparkle', 'Listing Builder', 'Live Etsy data + AI → unique, policy-checked listings (title, 13 tags, description). One at a time or many in bulk.'],
+  ['/handmade', 'shop', 'Handmade Products', 'Research physical handmade niches: competition, pricing, processing time, tags — with Etsy’s handmade rules and compliance risks.'],
+  ['/pricing', 'calc', 'Handmade Pricing', 'Turn materials, your time and Etsy fees into a price that actually pays you — compared with the market.'],
   ['/studio', 'brush', 'Design Studio', 'Pick a product (coupon book, bingo, gift tags, Ramadan tracker, seating chart…) and get a print-ready PDF design — no AI used.'],
   ['/policy', 'shield', 'Policy Checker', 'Check any listing for trademarks, banned claims, off-Etsy contact info, “vintage/handmade” claims and Etsy limits.'],
   ['/digital', 'folder', 'Digital Products', 'Research digital-download niches: competition, pricing, winning tags — with Etsy’s AI and Creativity rules built in.'],

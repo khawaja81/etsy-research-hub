@@ -208,6 +208,42 @@ app.get(
   })
 );
 
+// Handmade-products research: same analysis as /api/keyword, restricted to physical items made by the
+// seller or a shop member (who_made = i_did / collective). Adds handmade-specific stats.
+app.get(
+  '/api/handmade',
+  wrap(async (req, res) => {
+    const params = searchParams(req.query);
+    if (!params.keywords) return res.status(400).json({ error: 'Enter a keyword', code: 'BAD_REQUEST' });
+    const depth = Math.max(50, Math.min(300, num(req.query.depth) || 200));
+    const { count, raw } = await fetchSearch(params, depth);
+    const all = await enrich(raw);
+    const listings = all.filter((l) => !l.is_digital && (l.who_made === 'i_did' || l.who_made === 'collective'));
+    const summary = summarize(listings);
+    const share = (fn) => (all.length ? Math.round((all.filter(fn).length / all.length) * 1000) / 10 : 0);
+    const proc = listings.map((l) => (l.processing_min != null && l.processing_max != null ? (l.processing_min + l.processing_max) / 2 : null)).filter((n) => n != null).sort((a, b) => a - b);
+    res.json({
+      query: params.keywords,
+      total_count: count,
+      sample_size: all.length,
+      handmade_share: share((l) => !l.is_digital && (l.who_made === 'i_did' || l.who_made === 'collective')),
+      mix: {
+        digital: share((l) => l.is_digital),
+        made_by_seller: share((l) => l.who_made === 'i_did'),
+        shop_member: share((l) => l.who_made === 'collective'),
+        someone_else: share((l) => l.who_made === 'someone_else'),
+        personalizable: listings.length ? Math.round((listings.filter((l) => l.is_personalizable).length / listings.length) * 1000) / 10 : 0,
+      },
+      processing_median_days: proc.length ? proc[Math.floor(proc.length / 2)] : null,
+      scores: keywordScores(count, listings),
+      seo: seoMetrics(params.keywords, count, listings, summary),
+      summary,
+      listings,
+      generated_at: new Date().toISOString(),
+    });
+  })
+);
+
 // Lightweight: just the number of active listings for a keyword (competition).
 app.get(
   '/api/count',

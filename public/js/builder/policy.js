@@ -109,6 +109,37 @@ const MISLEADING_TERMS = [
 
 const ADULT_TERMS = ["nsfw", "xxx", "porn", "explicit content", "18+"];
 
+/*
+ * AI + digital-product rules (Etsy Creativity Standards / IP policy).
+ * Etsy updates these often — re-check https://www.etsy.com/legal/creativity-standards
+ */
+const AI_TOOL_TERMS = [
+  "midjourney", "dall-e", "dall e", "dalle", "chatgpt", "stable diffusion", "leonardo ai", "leonardo.ai",
+  "adobe firefly", "firefly ai", "ideogram", "nightcafe", "playground ai", "copilot designer",
+];
+const AI_CLAIM_RE = /\bai[\s-]?(generated|created|made|art|artwork|designed|images?)\b|\b(generated|created|made|designed)\s+(by|with|using)\s+(ai|artificial intelligence)\b/i;
+const HAND_CLAIM_TERMS = [
+  "hand drawn", "hand-drawn", "hand painted", "hand-painted", "hand illustrated", "hand-illustrated", "hand sketched",
+  "hand lettered", "hand-lettered", "original painting", "painted by me", "drawn by me", "hand made", "handmade",
+  "handcrafted", "hand crafted",
+];
+// Reselling other people's digital content is a top reason digital shops get removed.
+const RESELL_TERMS = [
+  "plr", "private label rights", "master resell rights", "mrr", "resell rights", "resale rights",
+  "resell license", "you can resell", "white label", "white-label",
+];
+const COMMERCIAL_TERMS = ["commercial use", "commercial license", "commercial licence", "small business license", "small business licence"];
+
+export const AI_RULES = [
+  ["You must be the creator", "Etsy’s Creativity Standards require items to be made, designed, handpicked or sourced by you. Uploading raw AI output you only prompted — with no real design work of your own — is the highest-risk pattern."],
+  ["Disclose AI use", "Say plainly in the listing description (and in Etsy’s creativity / “how it’s made” fields wherever they are shown) that AI tools were used, and how you finished the design."],
+  ["Never call AI-assisted work hand-made", "“Hand-drawn”, “hand-painted”, “handmade” or “original painting” on an AI-assisted design is misleading and a common reason for removals."],
+  ["No other people’s IP", "No characters, brands, celebrities or sports teams in prompts, outputs or tags — and don’t write “in the style of” a named artist."],
+  ["No resale / PLR bundles", "Only sell designs you created and own. PLR, MRR and “resell rights” packs, or stock you only have a personal licence for, break Etsy’s rules."],
+  ["Keep proof of your work", "Keep source files, layers, drafts and process screenshots. Etsy can ask you to show how an item was made."],
+  ["Mockups must be honest", "Photos and mockups must show the actual file the buyer receives — not a different, nicer-looking AI image."],
+];
+
 const STOPWORDS = new Set([
   "a", "an", "and", "the", "for", "of", "to", "in", "on", "with", "by", "or", "at", "from", "as", "is",
   "your", "my", "her", "him", "his", "their", "our", "it", "set", "pack", "gift", "gifts",
@@ -165,6 +196,18 @@ function contentChecks(text, field, ctx) {
   for (const t of findTerms(text, ADULT_TERMS))
     out.push(issue("warn", field, `"${t}" — mature content must be marked "mature" and must not appear in titles/thumbnails.`));
 
+  for (const t of findTerms(text, RESELL_TERMS))
+    out.push(issue("error", field, `"${t}" — reselling or giving resale rights to other people's digital content is not allowed. Only list designs you created and own.`, { type: "remove", term: t }));
+
+  const aiTools = findTerms(text, AI_TOOL_TERMS);
+  const aiClaim = AI_CLAIM_RE.test(text);
+  if ((aiTools.length || aiClaim) && ctx && !ctx.aiDesign)
+    out.push(issue("warn", field, `This mentions AI${aiTools.length ? ` (${aiTools.join(", ")})` : ""} but "AI tools used in the design" is not ticked. If AI was used, tick it and disclose it; if not, remove the wording.`));
+  if (aiTools.length && ctx && ctx.aiDesign && field !== "description")
+    out.push(issue("warn", field, `Don't put AI tool names (${aiTools.join(", ")}) in the ${field} — they are brand names. Disclose AI use in the description instead.`, { type: "remove", term: aiTools[0] }));
+  if (/\bin the style of\b/i.test(text))
+    out.push(issue("warn", field, `"in the style of …" can point to another creator's work. Describe the style generically (e.g. "watercolor, soft pastel") instead of naming an artist.`));
+
   if (EMAIL_RE.test(text)) out.push(issue("error", field, "Contains an email address. Keep all communication inside Etsy Messages."));
   if (URL_RE.test(text)) out.push(issue("error", field, "Contains a web link/domain. Links to outside sites are not allowed in listings."));
   if (PHONE_RE.test(text) && /\d{9,}/.test(text.replace(/[\s().-]/g, "")))
@@ -178,6 +221,9 @@ function contentChecks(text, field, ctx) {
     const handmadeClaim = findTerms(text, ["handmade", "hand made", "handcrafted", "hand crafted"]).length;
     if (handmadeClaim && (ctx.itemType === "pod" || ctx.itemType === "supply-resell"))
       out.push(issue("error", field, `You selected "${ctx.itemTypeLabel}" but the text says handmade. That is misleading under Etsy's Creativity Standards.`));
+    const handClaims = findTerms(text, HAND_CLAIM_TERMS);
+    if (ctx.aiDesign && handClaims.length)
+      out.push(issue("error", field, `"${handClaims[0]}" on an AI-assisted design is misleading under Etsy's Creativity Standards. Say "designed by [shop]" and disclose the AI use.`, { type: "remove", term: handClaims[0] }));
     if (handmadeClaim && ctx.itemType === "digital")
       out.push(issue("warn", field, `Digital files aren't "handmade" — say "designed by" or "original design" instead.`));
   }
@@ -272,6 +318,22 @@ function checkDescription(desc, ctx) {
     out.push(issue("info", "description", "The first sentence shows in Google results — make it a clear sentence describing the item."));
   if (ctx && ctx.aiDesign && !/\bAI\b|artificial intelligence/i.test(d))
     out.push(issue("error", "description", "You marked the design as AI-assisted. Etsy's Creativity Standards require disclosing AI use in the description.", { type: "addAiDisclosure" }));
+  if (ctx && ctx.aiDesign)
+    out.push(issue("info", "description", "AI-assisted work: Etsy expects meaningful creative input from you (editing, composition, finishing), no copied styles or IP, and honest mockups. Keep your source files as proof."));
+  if (ctx && ctx.itemType === "digital") {
+    if (!/instant download|digital download|digital file|digital product|downloadable|download/i.test(d))
+      out.push(issue("warn", "description", `Say clearly that this is an instant digital download.`));
+    if (!/no physical (item|product)|nothing (physical|will be (shipped|mailed))|not a physical/i.test(d))
+      out.push(issue("warn", "description", `Add "No physical item will be shipped" — it prevents "where is my order?" messages and chargebacks.`));
+    if (!/\b(pdf|png|jpe?g|svg|dxf|eps|zip|xlsx|docx|psd|pptx|google sheets|canva|notion)\b/i.test(d))
+      out.push(issue("info", "description", "List the file format(s), sizes/dimensions and how many files are included (Etsy allows up to 5 files, max 20 MB each)."));
+    if (!/refund|return|exchange/i.test(d))
+      out.push(issue("info", "description", `Digital items can't be returned. State your refund/problem policy (e.g. "Due to the digital nature, no refunds — message me if there is a problem").`));
+    if (findTerms(d, COMMERCIAL_TERMS).length)
+      out.push(issue("info", "description", "Commercial-use wording: only offer it for designs you fully own, and spell out the limits (e.g. max copies, no resale of the file itself, no AI-training use)."));
+    if (/canva/i.test(d))
+      out.push(issue("info", "description", "Canva templates: deliver the template link inside the downloaded PDF (not in the listing), and don't include Canva Pro-only elements unless you say so."));
+  }
   return out.concat(contentChecks(d, "description", ctx));
 }
 
@@ -391,7 +453,7 @@ function fixTags(tags, ctx) {
   const seen = new Set();
   for (const raw of tags) {
     let t = cleanTag(raw);
-    for (const list of [TRADEMARKS_BLOCK, COUNTERFEIT_TERMS, MEDICAL_TERMS, OFFSITE_TERMS, MISLEADING_TERMS])
+    for (const list of [TRADEMARKS_BLOCK, COUNTERFEIT_TERMS, MEDICAL_TERMS, OFFSITE_TERMS, MISLEADING_TERMS, RESELL_TERMS, AI_TOOL_TERMS])
       if (findTerms(t, list).length) t = "";
     // plural/singular twins ("personalized mug" / "personalized mugs") waste a slot — Etsy matches both
     const key = t.split(" ").map((w) => (w.length > 3 ? w.replace(/s$/, "") : w)).join(" ");
@@ -403,7 +465,7 @@ function fixTags(tags, ctx) {
   return out;
 }
 
-const SCRUB_LISTS = [TRADEMARKS_BLOCK, COUNTERFEIT_TERMS, MEDICAL_TERMS, OFFSITE_TERMS, MISLEADING_TERMS];
+const SCRUB_LISTS = [TRADEMARKS_BLOCK, COUNTERFEIT_TERMS, MEDICAL_TERMS, OFFSITE_TERMS, MISLEADING_TERMS, RESELL_TERMS];
 
 function sentenceIsUnsafe(s) {
   if (EMAIL_RE.test(s) || URL_RE.test(s) || HANDLE_RE.test(s)) return true;
@@ -459,6 +521,7 @@ function similarityToHistory(listing, history) {
 
 export const EtsyPolicy = {
   LIMITS,
+  AI_RULES,
   TRADEMARKS_BLOCK,
   findTerms,
   checkTitle,

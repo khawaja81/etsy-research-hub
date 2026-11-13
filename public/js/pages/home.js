@@ -4,6 +4,7 @@ import { icons } from '../icons.js';
 const FEATURES = [
   ['/builder', 'sparkle', 'Listing Builder', 'Live Etsy data + AI → unique, policy-checked listings (title, 13 tags, description). One at a time or many in bulk.'],
   ['/policy', 'shield', 'Policy Checker', 'Check any listing for trademarks, banned claims, off-Etsy contact info, “vintage/handmade” claims and Etsy limits.'],
+  ['/digital', 'folder', 'Digital Products', 'Research digital-download niches: competition, pricing, winning tags — with Etsy’s AI and Creativity rules built in.'],
   ['/keyword', 'search', 'Keyword Research', 'Competition, demand & opportunity scores, price ranges, top tags, title words and top shops for any search.'],
   ['/ideas', 'bulb', 'Keyword Ideas', 'Long-tail keyword ideas from buyer autocomplete (Google, “etsy …” searches, Amazon) with competition checks.'],
   ['/compare', 'compare', 'Compare Keywords', 'Put up to 5 keywords side by side and pick the one with the best opportunity.'],

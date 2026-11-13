@@ -15,6 +15,7 @@ import * as account from './pages/account.js';
 import * as users from './pages/users.js';
 import * as builder from './pages/builder.js';
 import * as policyCheck from './pages/policy-check.js';
+import * as digital from './pages/digital.js';
 
 // Who is logged in (the server redirects to /login when nobody is).
 const { user } = await api('/api/auth/me');
@@ -32,6 +33,7 @@ const NAV = [
   {
     group: 'Research',
     items: [
+      { path: '/digital', label: 'Digital Products', icon: 'folder', page: digital },
       { path: '/keyword', label: 'Keyword Research', icon: 'search', page: keyword },
       { path: '/ideas', label: 'Keyword Ideas', icon: 'bulb', page: ideas },
       { path: '/compare', label: 'Compare Keywords', icon: 'compare', page: compare },

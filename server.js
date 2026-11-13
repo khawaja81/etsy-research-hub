@@ -176,6 +176,35 @@ app.get(
   })
 );
 
+// Digital-products research: same analysis as /api/keyword, but only listings that are digital downloads.
+// Etsy's search API has no "digital only" filter, so the search is biased with "digital download" and
+// the results are filtered by listing_type === 'download'.
+const DIGITAL_WORDS = /\b(digital|printable|download|template|svg|pdf|png|instant|planner|spreadsheet|clipart|clip art)\b/i;
+app.get(
+  '/api/digital',
+  wrap(async (req, res) => {
+    const params = searchParams(req.query);
+    if (!params.keywords) return res.status(400).json({ error: 'Enter a keyword', code: 'BAD_REQUEST' });
+    const query_used = DIGITAL_WORDS.test(params.keywords) ? params.keywords : `${params.keywords} digital download`.slice(0, 200);
+    const depth = Math.max(50, Math.min(300, num(req.query.depth) || 200));
+    const { count, raw } = await fetchSearch({ ...params, keywords: query_used }, depth);
+    const all = await enrich(raw);
+    const listings = all.filter((l) => l.is_digital);
+    const summary = summarize(listings);
+    res.json({
+      query: params.keywords,
+      query_used,
+      total_count: count,
+      sample_size: all.length,
+      digital_share: all.length ? Math.round((listings.length / all.length) * 1000) / 10 : 0,
+      scores: keywordScores(count, listings),
+      summary,
+      listings,
+      generated_at: new Date().toISOString(),
+    });
+  })
+);
+
 // Lightweight: just the number of active listings for a keyword (competition).
 app.get(
   '/api/count',

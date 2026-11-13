@@ -21,12 +21,12 @@ const SIALKOT = [
   ] },
   { group: '🇵🇰 Sialkot — sports goods', sialkot: true, items: [
     ['Custom footballs / soccer balls', 'custom soccer ball', 'medium', 'Never write FIFA, World Cup or club names. Say “size 5, hand-stitched” only if true.'],
-    ['Boxing & MMA gloves', 'custom boxing gloves', 'medium', 'No brand names. Don’t claim injury protection or certification you don’t hold.'],
+    ['Boxing & MMA gloves', 'custom boxing gloves', 'medium', 'No brand names. Don’t claim injury protection or certification you don’t hold.', 'careful'],
     ['Goalkeeper gloves', 'goalkeeper gloves', 'medium', 'No brand or club marks; give a size chart.'],
     ['Martial arts uniforms', 'karate gi custom', 'low', 'Give height/weight sizing and fabric weight.'],
     ['Cricket bats & gear', 'handmade cricket bat', 'medium', '“English willow” or “Kashmir willow” must be true. No IPL/team logos.'],
-    ['Baseball gloves', 'handmade baseball glove', 'medium', 'State leather grade and break-in notes; no MLB or brand marks.'],
-    ['Team sportswear', 'custom team jersey', 'high', 'Team logos and club names are trademarks — original designs only.'],
+    ['Baseball gloves', 'handmade baseball glove', 'medium', 'State leather grade and break-in notes; no MLB or brand marks.', 'careful'],
+    ['Team sportswear', 'custom team jersey', 'high', 'Team logos and club names are trademarks — original designs only.', 'careful'],
   ] },
   { group: '🇵🇰 Sialkot — grooming tools & cutlery', sialkot: true, items: [
     ['Manicure & pedicure sets', 'stainless steel manicure set', 'medium', 'Don’t say “surgical” or “medical grade”; state the steel type if you know it.'],
@@ -40,12 +40,13 @@ const SIALKOT = [
   ] },
   { group: '🇵🇰 Sialkot — badges, patches & covers', sialkot: true, items: [
     ['Embroidered patches', 'custom embroidered patch', 'medium', 'Original designs only — no logos, characters or brands.'],
-    ['Bullion wire badges', 'bullion wire patch', 'medium', 'Great craft story; no regimental or club marks you don’t own.'],
+    ['Bullion wire badges', 'bullion wire patch', 'medium', 'Great craft story; no regimental or club marks you don’t own.', 'careful'],
     ['Leather Quran covers', 'leather quran cover handmade', 'low', 'Show real material and stitching; a respectful niche that fits Ramadan and Eid.'],
   ] },
 ];
 
 const SIALKOT_TIPS = [
+  ['“Unbranded” does not mean “no brand”', 'Sell it under your OWN brand: your shop name, your stamp or engraving, your packaging and labels (see the Studio templates). Never use another company’s name, logo, team or “inspired by” wording. Plain generic keywords like “leather wallet men” are exactly what unbranded buyers search.'],
   ['Say who really makes it', 'If your own workshop or staff make it, it is “made by you / a member of your shop”. If an outside factory makes YOUR design, choose “designed by you” and add that factory as a production partner (name and location). Reselling a factory’s catalog items you did not design is not allowed.'],
   ['Show your origin proudly — and truthfully', '“Handcrafted in Sialkot, Pakistan” is a real selling point. Many destination countries also expect a country-of-origin marking on goods — check the rules for the countries you ship to.'],
   ['Material and quality claims must be true', 'State leather type (full-grain, top-grain, genuine), steel type, “Damascus”, “English willow” only if accurate. Don’t say “surgical” or “medical grade”.'],
@@ -137,6 +138,13 @@ export async function render(view, ctx) {
   const out = $('#hm-out', view);
   if (!p.q) {
     out.innerHTML = nichePicker() + sialkotCard() + rulesCard();
+    const safe = $('#hm-safe', out);
+    if (safe) {
+      safe.checked = store.get('hm-safe', true);
+      const apply = () => out.querySelectorAll('.hm-item').forEach((el) => { el.style.display = safe.checked && el.dataset.careful ? 'none' : ''; });
+      safe.addEventListener('change', () => { store.set('hm-safe', safe.checked); apply(); });
+      apply();
+    }
     return;
   }
   out.innerHTML = loading(`Analyzing handmade listings for “${p.q}”…`);
@@ -160,10 +168,11 @@ function sialkotCard() {
 
 function nichePicker() {
   return `<div class="notice accent"><div class="icon">🇵🇰</div><div><h3>Sialkot specialties are shown first</h3><p>Leather goods, sports goods, grooming tools and badges — the crafts Sialkot is known for. Pick one to see live Etsy competition, prices and tags.</p></div></div>
+    <label class="row small" style="gap:8px;margin:6px 0 2px"><input type="checkbox" id="hm-safe" checked> Show only unbranded-friendly niches (hide brand-heavy markets)</label>
     <div class="section-title"><h2>Pick a handmade niche to analyze</h2></div>
     ${[...SIALKOT, ...NICHES].map((g) => `<div class="card" style="margin-bottom:14px"><div class="card-head"><h3>${esc(g.group)}</h3></div>
-      <div class="stack" style="gap:10px">${g.items.map(([name, seed, risk, note]) => `<div class="row" style="gap:12px;align-items:flex-start">
-        <div style="min-width:0;flex:1"><a href="#/handmade?q=${encodeURIComponent(seed)}"><b>${esc(name)}</b></a><div class="muted small">${esc(note)}</div></div>${riskBadge(risk)}</div>`).join('')}</div></div>`).join('')}
+      <div class="stack" style="gap:10px">${g.items.map(([name, seed, risk, note, brand]) => `<div class="row hm-item" data-careful="${brand === 'careful' ? '1' : ''}" style="gap:12px;align-items:flex-start">
+        <div style="min-width:0;flex:1"><a href="#/handmade?q=${encodeURIComponent(seed)}"><b>${esc(name)}</b></a> ${brand === 'careful' ? '<span class="badge warn" title="Buyers here often search brand or team names. Sell generic or your own brand only.">brand-heavy market</span>' : g.sialkot ? '<span class="badge good" title="Generic product — no brand needed">unbranded-friendly</span>' : ''}<div class="muted small">${esc(note)}</div></div>${riskBadge(risk)}</div>`).join('')}</div></div>`).join('')}
     <p class="muted small">Compliance labels are our own guidance, not an Etsy rating or legal advice. Rules differ by country — check labeling and safety requirements where you sell.</p>`;
 }
 
@@ -249,6 +258,7 @@ function renderResults(out, data, ctx) {
       ${tile('Median price', money(s.price.median, cur), `Middle 50%: ${money(s.price.p25, cur)} – ${money(s.price.p75, cur)}`)}
       ${tile('Median processing', data.processing_median_days != null ? `${fmt(data.processing_median_days)} days` : '—', 'time to make before shipping', { info: 'Average of the min and max processing days listed by sellers.' })}
       ${tile('Personalized', pct(m.personalizable), 'of handmade listings', { info: 'Share offering personalization.' })}
+      ${data.brands ? tile('Brand names in listings', pct(data.brands.share), data.brands.top.length ? `most common: ${esc(data.brands.top.slice(0, 3).map((b) => b.term).join(', '))}` : 'none found', { info: 'Share of top handmade listings whose title or tags use a protected brand, team or character name. An unbranded seller cannot use those words — win with generic, descriptive keywords instead.' }) : ''}
     </div>
 
     ${seoSection(data.seo, n)}

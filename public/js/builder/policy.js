@@ -54,6 +54,11 @@ const TRADEMARKS_BLOCK = [
   "studio ghibli", "totoro", "spirited away", "lord of the rings", "game of thrones", "the simpsons",
   "spongebob", "rugrats", "teenage mutant ninja turtles", "transformers", "my little pony", "strawberry shortcake",
   "onesie", "onesies", // registered trademark – use "baby bodysuit"
+  // sports, leather, cutlery and grooming brands (common in Sialkot export categories)
+  "puma", "everlast", "venum", "hayabusa", "title boxing", "cleto reyes", "fairtex", "reusch", "uhlsport", "rawlings", "mizuno",
+  "kookaburra", "gray-nicolls", "gray nicolls", "gunn & moore", "slazenger", "umbro", "under armour", "reebok", "new balance",
+  "wusthof", "wüsthof", "zwilling", "henckels", "victorinox", "swiss army", "leatherman", "gerber", "kershaw", "buck knives",
+  "tweezerman", "wahl", "andis", "fiskars", "levis", "levi's", "timberland", "dr martens", "carhartt", "montblanc", "samsonite", "tumi", "ralph lauren", "tommy hilfiger", "calvin klein",
 ];
 
 const TRADEMARKS_CAUTION = [

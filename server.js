@@ -11,6 +11,7 @@ import { mountAuthRoutes, requireLogin, requireAdmin } from './src/auth.js';
 import { getUsdRates } from './src/fx.js';
 import { suggest, MODIFIERS } from './src/suggest.js';
 import { writeListing, isAiConfigured, aiModel, aiProvider, AiError } from './src/listing-ai.js';
+import { EtsyPolicy } from './public/js/builder/policy.js';
 import {
   normalizeListing,
   normalizeShop,
@@ -208,6 +209,19 @@ app.get(
   })
 );
 
+// How many top listings lean on a protected brand / character name (words an unbranded seller cannot use).
+function brandStats(listings) {
+  const counts = new Map();
+  let hit = 0;
+  for (const l of listings) {
+    const found = EtsyPolicy.findTerms(`${l.title} ${(l.tags || []).join(' ')}`, EtsyPolicy.TRADEMARKS_BLOCK);
+    if (found.length) hit += 1;
+    for (const t of new Set(found)) counts.set(t, (counts.get(t) || 0) + 1);
+  }
+  const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([term, count]) => ({ term, count }));
+  return { share: listings.length ? Math.round((hit / listings.length) * 1000) / 10 : 0, listings_with_brand: hit, top };
+}
+
 // Handmade-products research: same analysis as /api/keyword, restricted to physical items made by the
 // seller or a shop member (who_made = i_did / collective). Adds handmade-specific stats.
 app.get(
@@ -226,6 +240,7 @@ app.get(
       query: params.keywords,
       total_count: count,
       sample_size: all.length,
+      brands: brandStats(listings),
       handmade_share: share((l) => !l.is_digital && (l.who_made === 'i_did' || l.who_made === 'collective')),
       mix: {
         digital: share((l) => l.is_digital),
